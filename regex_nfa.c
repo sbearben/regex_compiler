@@ -12,6 +12,7 @@
  * 
 */
 
+#include <assert.h>
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -38,8 +39,10 @@ struct nfa {
 
 struct node {
       bool is_accepting;
-      edge_t** edges;  // Array of edges connected to other nodes
+      edge_t* edges;  // Array of edges connected to other nodes
       int num_edges;
+      // Private - for freeing and printing (since nodes can have circular references)
+      bool __has_seen;
 };
 
 struct edge {
@@ -59,8 +62,8 @@ nfa_t* new_repetition_nfa(nfa_t*);
 nfa_t* new_literal_nfa(char);
 
 node_t* new_node(int);
-edge_t** new_edges(int);
-void set_node_edges(node_t*, edge_t**, int);
+edge_t* new_edges(int);
+void set_node_edges(node_t*, edge_t*, int);
 void init_epsilon(edge_t*);
 
 void free_nfa(nfa_t*);
@@ -150,16 +153,16 @@ nfa_t* new_choice_nfa(nfa_t* left, nfa_t* right) {
 
    // Initialize epsilon edges for start node
    for (int i = 0; i < start_node->num_edges; i++) {
-      init_epsilon(start_node->edges[i]);
+      init_epsilon(&start_node->edges[i]);
    }
-   start_node->edges[0]->to = left->start;
-   start_node->edges[1]->to = right->start;
+   start_node->edges[0].to = left->start;
+   start_node->edges[1].to = right->start;
 
    // Create epsilon edges that connect to end node
-   edge_t** edges_to_end = new_edges(2);
+   edge_t* edges_to_end = new_edges(2);
    for (int i = 0; i < 2; i++) {
-      init_epsilon(edges_to_end[i]);
-      edges_to_end[i]->to = end_node;
+      init_epsilon(&edges_to_end[i]);
+      edges_to_end[i].to = end_node;
    }
    set_node_edges(left->end, &edges_to_end[0], 1);
    set_node_edges(right->start, &edges_to_end[1], 1);
@@ -184,12 +187,11 @@ nfa_t* new_concat_nfa(nfa_t* left, nfa_t* right) {
    right->end->is_accepting = false;
 
    // Create the connecting epsilon edge
-   edge_t* edge = *new_edges(1);
-   init_epsilon(edge);
-
+   edge_t* edges = new_edges(1);
+   init_epsilon(edges);
    // Make the connection between the left and right side using the new 'edge'
-   set_node_edges(left->end, &edge, 1);
-   edge->to = right->start;
+   set_node_edges(left->end, edges, 1);
+   edges->to = right->start;
 
    // Hook up start and end to nfa and adjust accepting
    nfa->start = left->start;
@@ -215,18 +217,19 @@ nfa_t* new_repetition_nfa(nfa_t* old_nfa) {
 
    // Initialize epsilon edges for start node
    for (int i = 0; i < start_node->num_edges; i++) {
-      init_epsilon(start_node->edges[i]);
+      init_epsilon(&start_node->edges[i]);
    }
-   start_node->edges[0]->to = old_nfa->start;
-   start_node->edges[1]->to = end_node;
+   start_node->edges[0].to = old_nfa->start;
+   start_node->edges[1].to = end_node;
 
-   // Create epsilon edges for old end node (could maybe reuse the edges alloced for start node?)
-   edge_t** old_end_edges = new_edges(2);
+   // Create epsilon edges for old end node (could maybe reuse the edges alloced for start node? prob not a good idea
+   // since this would make freeing more complicated, as freeing an already freed pointer can be a runtime error)
+   edge_t* old_end_edges = new_edges(2);
    for (int i = 0; i < 2; i++) {
-      init_epsilon(old_end_edges[i]);
+      init_epsilon(&old_end_edges[i]);
    }
-   old_end_edges[0]->to = old_nfa->start;
-   old_end_edges[1]->to = end_node;
+   old_end_edges[0].to = old_nfa->start;
+   old_end_edges[1].to = end_node;
    set_node_edges(old_nfa->end, old_end_edges, 2);
 
    // Hook up start and end to nfa and adjust accepting
@@ -249,9 +252,9 @@ nfa_t* new_literal_nfa(char value) {
    end_node->is_accepting = true;
 
    // Init connecting edge with the literal value and make connection
-   start_node->edges[0]->value = value;
-   start_node->edges[0]->is_epsilon = false;
-   start_node->edges[0]->to = end_node;
+   start_node->edges[0].value = value;
+   start_node->edges[0].is_epsilon = false;
+   start_node->edges[0].to = end_node;
 
    // Hook up start and end to nfa
    nfa->start = start_node;
@@ -264,9 +267,10 @@ nfa_t* new_literal_nfa(char value) {
 node_t* new_node(int num_edges) {
    node_t* node = (node_t*)xmalloc(sizeof(node_t));
    node->is_accepting = false;
+   node->__has_seen = false;
 
    if (num_edges > 0) {
-      edge_t** edges = new_edges(num_edges);
+      edge_t* edges = new_edges(num_edges);
       node->edges = edges;
       node->num_edges = num_edges;
    } else {
@@ -277,18 +281,19 @@ node_t* new_node(int num_edges) {
    return node;
 }
 
-edge_t** new_edges(int num) {
-   edge_t** edges = (edge_t**)xmalloc(num * sizeof(edge_t));
+edge_t* new_edges(int num) {
+   edge_t* edges = (edge_t*)xmalloc(num * sizeof(edge_t));
    for (int i = 0; i < num; i++) {
-      edges[i]->to = NULL;
+      edges[i].to = NULL;
    }
 
    return edges;
 }
 
-void set_node_edges(node_t* node, edge_t** edges, int num_edges) {
+void set_node_edges(node_t* node, edge_t* edges, int num_edges) {
    // I believe it should always be the case that any node we are setting edges on didn't
    // have any edges previously - thus there is no need to free any previous edges.
+   assert(node->edges == NULL);
    node->edges = edges;
    node->num_edges = num_edges;
 }
@@ -307,9 +312,13 @@ void free_nfa(nfa_t* nfa) {
 
 // TODO: this would probably result in infinite loop when there is a circular path in the NFA
 void free_node(node_t* node) {
+   if (node->__has_seen) {
+      return;
+   }
+   node->__has_seen = true;
    for (int i = 0; i < node->num_edges; i++) {
-      free_node(node->edges[i]->to);
-      free(node->edges[i]);
+      free_node(node->edges[i].to);
+      // free(node->edges[i]);
    }
    free(node->edges);
    free(node);
