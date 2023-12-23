@@ -27,22 +27,26 @@ char token;
 //    Literal,
 // } node_kind;
 
-typedef struct nfa {
+typedef struct nfa nfa_t;
+typedef struct node node_t;
+typedef struct edge edge_t;
+
+struct nfa {
       node_t* start;
       node_t* end;
-} nfa_t;
+};
 
-typedef struct node {
+struct node {
       bool is_accepting;
       edge_t** edges;  // Array of edges connected to other nodes
       int num_edges;
-} node_t;
+};
 
-typedef struct edge {
+struct edge {
       char value;  // null character if is_epsilon is true
       bool is_epsilon;
       node_t* to;
-} edge_t;
+};
 
 nfa_t* regexp(void);
 nfa_t* concat(void);
@@ -66,7 +70,7 @@ void* xmalloc(size_t size) {
    void* ptr = malloc(size);
    if (!ptr) {
       fprintf(stderr, "malloc failed\n");
-      exit(EXIT_FAILURE)
+      exit(EXIT_FAILURE);
    }
    return ptr;
 }
@@ -100,7 +104,7 @@ nfa_t* concat(void) {
    temp = repetition();
    while (isalnum(token) || token == '(') {
       // We don't match here since current token is part of first set of `factor`, so if we matched the conditions in factor will fail
-      next = new_concat_node(temp, repetition());
+      next = new_concat_nfa(temp, repetition());
       temp = next;
    }
    return temp;
@@ -157,8 +161,8 @@ nfa_t* new_choice_nfa(nfa_t* left, nfa_t* right) {
       init_epsilon(edges_to_end[i]);
       edges_to_end[i]->to = end_node;
    }
-   set_node_edges(left->end, edges_to_end[0], 1);
-   set_node_edges(right->start, edges_to_end[1], 1);
+   set_node_edges(left->end, &edges_to_end[0], 1);
+   set_node_edges(right->start, &edges_to_end[1], 1);
 
    // Hook up start and end to nfas and adjust accepting
    nfa->start = start_node;
@@ -180,11 +184,11 @@ nfa_t* new_concat_nfa(nfa_t* left, nfa_t* right) {
    right->end->is_accepting = false;
 
    // Create the connecting epsilon edge
-   edge_t* edge = new_edges(1);
+   edge_t* edge = *new_edges(1);
    init_epsilon(edge);
 
    // Make the connection between the left and right side using the new 'edge'
-   set_node_edges(left->end, edge, 1);
+   set_node_edges(left->end, &edge, 1);
    edge->to = right->start;
 
    // Hook up start and end to nfa and adjust accepting
@@ -303,11 +307,9 @@ void free_nfa(nfa_t* nfa) {
 
 // TODO: this would probably result in infinite loop when there is a circular path in the NFA
 void free_node(node_t* node) {
-   edge_t* edge = node->edges;
-   while (edge) {
-      free_node(edge->to);
-      free(edge);
-      edge++;
+   for (int i = 0; i < node->num_edges; i++) {
+      free_node(node->edges[i]->to);
+      free(node->edges[i]);
    }
    free(node->edges);
    free(node);
@@ -321,29 +323,29 @@ static void print_spaces(int indentno) {
  * listing file using indentation to indicate subtrees
  */
 void print_nfa(nfa_t* nfa, int indentno) {
-   print_spaces(indentno);
-   switch (tree->kind) {
-      case Choice:
-         printf("Choice\n");
-         print_nfa(tree->child, indentno + 2);
-         print_nfa(tree->rchild, indentno + 2);
-         break;
-      case Concat:
-         printf("Concat\n");
-         print_nfa(tree->child, indentno + 2);
-         print_nfa(tree->rchild, indentno + 2);
-         break;
-      case Repetition:
-         printf("Repetition\n");
-         print_nfa(tree->child, indentno + 2);
-         break;
-      case Literal:
-         printf("Literal: %c\n", tree->val);
-         break;
-      default:
-         printf("Unknown node kind\n");
-         break;
-   }
+   // print_spaces(indentno);
+   // switch (tree->kind) {
+   //    case Choice:
+   //       printf("Choice\n");
+   //       print_nfa(tree->child, indentno + 2);
+   //       print_nfa(tree->rchild, indentno + 2);
+   //       break;
+   //    case Concat:
+   //       printf("Concat\n");
+   //       print_nfa(tree->child, indentno + 2);
+   //       print_nfa(tree->rchild, indentno + 2);
+   //       break;
+   //    case Repetition:
+   //       printf("Repetition\n");
+   //       print_nfa(tree->child, indentno + 2);
+   //       break;
+   //    case Literal:
+   //       printf("Literal: %c\n", tree->val);
+   //       break;
+   //    default:
+   //       printf("Unknown node kind\n");
+   //       break;
+   // }
 }
 
 int main() {
