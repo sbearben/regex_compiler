@@ -73,9 +73,10 @@ void list_default_destructor(list_node_t* node) {
 void list_for_each(list_t* list, void (*execute)(list_node_t*)) {
    list_node_t* current = list->head;
    list_node_t* next;
+
    while (current != NULL) {
       next = current->next;
-      execute(current->data);
+      execute(current);
       current = next;
    }
 }

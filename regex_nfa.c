@@ -77,7 +77,7 @@ void nfa_traverse(nfa_t*, void (*on_node)(node_t*), void (*on_edge)(edge_t*));
 void nodes_traverse(node_t*, void (*on_node)(node_t*), void (*on_edge)(edge_t*), list_t*);
 
 // Logging
-void log_nfa(nfa_t*, int);
+void log_nfa(nfa_t*);
 void log_node(node_t*);
 void log_edge(edge_t*);
 
@@ -356,6 +356,7 @@ void nfa_traverse(nfa_t* nfa, void (*on_node)(node_t*), void (*on_edge)(edge_t*)
 
    nodes_traverse(nfa->start, on_node, on_edge, seen_nodes);
 
+   // TODO: Uhh need to releas the inner list_node_t's as well
    free(seen_nodes);
 }
 
@@ -387,9 +388,10 @@ void free_list_node(list_node_t* list_node) {
 }
 
 void log_node(node_t* node) {
-   printf("Node %d: %s\n", node->id, node->is_accepting ? "accepting" : "not accepting");
+   printf("Node %d - num_edges:%d %s\n", node->id, node->num_edges,
+          node->is_accepting ? "accepting" : "not accepting");
    for (int i = 0; i < node->num_edges; i++) {
-      printf("\t");
+      printf("    ");
       log_edge(&node->edges[i]);
    }
 }
@@ -403,7 +405,7 @@ void log_edge(edge_t* edge) {
 }
 
 // Traverse nfa and log node/edge info
-void log_nfa(nfa_t* nfa, int indentno) {
+void log_nfa(nfa_t* nfa) {
    printf("NFA:\n");
    nfa_traverse(nfa, log_node, NULL);
 }
@@ -414,7 +416,7 @@ int main() {
    nfa_t* result = regexp();
    // newline signals successful parse
    if (token == '\n') {
-      log_nfa(result, 2);
+      log_nfa(result);
       // char input[256];
       // printf("Enter string to match: ");
       // fgets(input, 256, stdin);
