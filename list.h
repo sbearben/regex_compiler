@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
 
@@ -41,7 +42,14 @@ void list_push(list_t* list, void* data) {
 
 // Concat list2 onto list1 (TODO: maybe should copy list2 first)
 list_t* list_concat(list_t* list1, list_t* list2) {
-   list1->tail = list2->head;
+   if (list1->head == NULL) {
+      assert(list1->tail == NULL);
+      list1->head = list2->head;
+      list1->tail = list2->tail;
+   } else {
+      list1->tail->next = list2->head;
+      list1->tail = list2->tail;
+   }
    return list1;
 }
 
