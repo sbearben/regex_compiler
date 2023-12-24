@@ -40,8 +40,6 @@ struct node {
       bool is_accepting;
       edge_t* edges;  // Array of edges connected to other nodes
       int num_edges;
-      // Private - for freeing (since nodes can have circular references)
-      bool __marked;
 };
 
 struct edge {
@@ -310,7 +308,6 @@ node_t* new_node(int num_edges) {
    node_t* node = (node_t*)xmalloc(sizeof(node_t));
    node->id = node_id++;
    node->is_accepting = false;
-   node->__marked = false;
 
    if (num_edges > 0) {
       edge_t* edges = new_edges(num_edges);
