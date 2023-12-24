@@ -74,7 +74,7 @@ void init_epsilon(edge_t*);
 
 // Generic destructors
 void free_nfa(nfa_t*);
-void free_list_node(void*);
+void free_list_node(list_node_t*);
 void nfa_traverse(nfa_t*, void (*on_node)(node_t*), void (*on_edge)(edge_t*));
 void nodes_traverse(node_t*, void (*on_node)(node_t*), void (*on_edge)(edge_t*), list_t*);
 
@@ -380,12 +380,13 @@ void nodes_traverse(node_t* node, void (*on_node)(node_t*), void (*on_edge)(edge
    }
 }
 
-void free_list_node(void* data) {
-   node_t* node = (node_t*)data;
+void free_list_node(list_node_t* list_node) {
+   node_t* node = (node_t*)list_node->data;
    if (node->edges != NULL) {
       free(node->edges);
    }
    free(node);
+   free(list_node);
 }
 
 void log_node(node_t* node) {

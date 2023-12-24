@@ -9,17 +9,18 @@ typedef struct list_node {
 typedef struct list {
       list_node_t* head;
       list_node_t* tail;
-      void (*destructor)(void*);
+      void (*destructor)(list_node_t*);
 } list_t;
 
-void list_initialize(list_t* list, void (*destructor)(void*));
+void list_initialize(list_t* list, void (*destructor)(list_node_t*));
 void list_push(list_t* list, void* data);
 list_t* list_concat(list_t* list1, list_t* list2);
 bool list_contains(list_t* list, void* data, int (*compare)(void*, void*));
 void list_release(list_t* list);
-void list_for_each(list_t* list, void (*execute)(void*));
+void list_default_destructor(list_node_t*);
+void list_for_each(list_t* list, void (*execute)(list_node_t*));
 
-void list_initialize(list_t* list, void (*destructor)(void*)) {
+void list_initialize(list_t* list, void (*destructor)(list_node_t*)) {
    list->head = NULL;
    list->tail = NULL;
    list->destructor = destructor;
@@ -58,16 +59,23 @@ void list_release(list_t* list) {
    if (!list) {
       return;
    }
-   list_for_each(list, list->destructor ? list->destructor : free);
+   list_for_each(list, list->destructor ? list->destructor : list_default_destructor);
    free(list);
 }
 
-// Traverse each element in the list
-void list_for_each(list_t* list, void (*execute)(void*)) {
+void list_default_destructor(list_node_t* node) {
+   free(node->data);
+   free(node);
+}
+
+// Traverse each node in the list
+void list_for_each(list_t* list, void (*execute)(list_node_t*)) {
    list_node_t* current = list->head;
+   list_node_t* next;
    while (current != NULL) {
+      next = current->next;
       execute(current->data);
-      current = current->next;
+      current = next;
    }
 }
 
