@@ -23,13 +23,6 @@
 // Holds the current input character for the parse
 char token;
 
-// typedef enum {
-//    Choice,
-//    Concat,
-//    Repetition,
-//    Literal,
-// } node_kind;
-
 typedef struct nfa nfa_t;
 typedef struct node node_t;
 typedef struct edge edge_t;
@@ -74,7 +67,6 @@ nfa_t* new_nfa();
 void nfa_consume_nodes(nfa_t*, nfa_t*);
 void nfa_set_start_end(nfa_t*, node_t*, node_t*);
 node_t* nfa_new_node(nfa_t*, int);
-// TODO: potentially delete this
 node_t* new_node(int);
 edge_t* new_edges(int);
 void node_set_edges(node_t*, edge_t*, int);
