@@ -108,7 +108,7 @@ nfa_t* regexp(void) {
    temp = concat();
    while (token == '|') {
       match('|');
-      next = new_concat_nfa(temp, concat());
+      next = new_choice_nfa(temp, concat());
       temp = next;
    }
    return temp;
@@ -154,7 +154,6 @@ nfa_t* factor(void) {
 
 nfa_t* new_choice_nfa(nfa_t* left, nfa_t* right) {
    nfa_t* nfa = new_nfa();
-
    nfa_consume_nodes(nfa, left);
    nfa_consume_nodes(nfa, right);
 
@@ -205,8 +204,8 @@ nfa_t* new_concat_nfa(nfa_t* left, nfa_t* right) {
    edge_t* edges = new_edges(1);
    init_epsilon(edges);
    // Make the connection between the left and right side using the new 'edge'
-   node_set_edges(left->end, edges, 1);
    edges->to = right->start;
+   node_set_edges(left->end, edges, 1);
 
    // Hook up start and end to nfa
    nfa_set_start_end(nfa, left->start, right->end);
@@ -380,15 +379,17 @@ void nodes_traverse(node_t* node, void (*on_node)(node_t*), void (*on_edge)(edge
 
 void free_list_node(list_node_t* list_node) {
    node_t* node = (node_t*)list_node->data;
+   printf("freeing node %d\n", node->id);
    if (node->edges != NULL) {
       free(node->edges);
    }
+   printf("freed node\n");
    free(node);
    free(list_node);
 }
 
 void log_node(node_t* node) {
-   printf("Node %d - num_edges:%d %s\n", node->id, node->num_edges,
+   printf("Node %d - num_edges: %d, %s\n", node->id, node->num_edges,
           node->is_accepting ? "accepting" : "not accepting");
    for (int i = 0; i < node->num_edges; i++) {
       printf("    ");
@@ -397,10 +398,11 @@ void log_node(node_t* node) {
 }
 
 void log_edge(edge_t* edge) {
+   int to_id = edge->to != NULL ? edge->to->id : -1;
    if (edge->is_epsilon) {
-      printf("Edge: epsilon\n");
+      printf("Edge: epsilon, to: %d\n", to_id);
    } else {
-      printf("Edge: %c\n", edge->value);
+      printf("Edge: %c, to: %d\n", edge->value, to_id);
    }
 }
 
