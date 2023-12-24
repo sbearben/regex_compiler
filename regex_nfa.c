@@ -18,6 +18,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "list.h"
+
 // Holds the current input character for the parse
 char token;
 
@@ -35,14 +37,18 @@ typedef struct edge edge_t;
 struct nfa {
       node_t* start;
       node_t* end;
+      list_t* __nodes;
 };
 
+int node_id = 0;
+
 struct node {
+      int id;
       bool is_accepting;
       edge_t* edges;  // Array of edges connected to other nodes
       int num_edges;
-      // Private - for freeing and printing (since nodes can have circular references)
-      bool __has_seen;
+      // Private - for freeing (since nodes can have circular references)
+      bool __marked;
 };
 
 struct edge {
@@ -51,22 +57,29 @@ struct edge {
       node_t* to;
 };
 
+// Recursive descent functions
 nfa_t* regexp(void);
 nfa_t* concat(void);
 nfa_t* repetition(void);
 nfa_t* factor(void);
 
+// Constructors per parser grammar
 nfa_t* new_choice_nfa(nfa_t*, nfa_t*);
 nfa_t* new_concat_nfa(nfa_t*, nfa_t*);
 nfa_t* new_repetition_nfa(nfa_t*);
 nfa_t* new_literal_nfa(char);
 
+// Generic constructors and setters
+nfa_t* new_nfa();
+void nfa_set_start_end(nfa_t*, node_t*, node_t*);
 node_t* new_node(int);
 edge_t* new_edges(int);
 void set_node_edges(node_t*, edge_t*, int);
 void init_epsilon(edge_t*);
 
+// Generic destructors
 void free_nfa(nfa_t*);
+void mark_nodes(node_t*, list_t*);
 void free_node(node_t*);
 
 void* xmalloc(size_t size) {
@@ -141,7 +154,7 @@ nfa_t* factor(void) {
 }
 
 nfa_t* new_choice_nfa(nfa_t* left, nfa_t* right) {
-   nfa_t* nfa = (nfa_t*)xmalloc(sizeof(nfa_t));
+   nfa_t* nfa = new_nfa();
 
    // Turn off 'accepting' of both sides
    left->end->is_accepting = false;
@@ -167,10 +180,8 @@ nfa_t* new_choice_nfa(nfa_t* left, nfa_t* right) {
    set_node_edges(left->end, &edges_to_end[0], 1);
    set_node_edges(right->start, &edges_to_end[1], 1);
 
-   // Hook up start and end to nfas and adjust accepting
-   nfa->start = start_node;
-   nfa->end = end_node;
-   nfa->end->is_accepting = true;
+   // Hook up start and end to nfa
+   nfa_set_start_end(nfa, start_node, end_node);
 
    // Free the old nfas, but not their contents
    free(left);
@@ -180,7 +191,7 @@ nfa_t* new_choice_nfa(nfa_t* left, nfa_t* right) {
 }
 
 nfa_t* new_concat_nfa(nfa_t* left, nfa_t* right) {
-   nfa_t* nfa = (nfa_t*)xmalloc(sizeof(nfa_t));
+   nfa_t* nfa = new_nfa();
 
    // Turn off 'accepting' of both sides
    left->end->is_accepting = false;
@@ -193,10 +204,8 @@ nfa_t* new_concat_nfa(nfa_t* left, nfa_t* right) {
    set_node_edges(left->end, edges, 1);
    edges->to = right->start;
 
-   // Hook up start and end to nfa and adjust accepting
-   nfa->start = left->start;
-   nfa->end = right->end;
-   nfa->end->is_accepting = true;
+   // Hook up start and end to nfa
+   nfa_set_start_end(nfa, left->start, right->end);
 
    // Free the old nfas, but not their contents
    free(left);
@@ -206,7 +215,7 @@ nfa_t* new_concat_nfa(nfa_t* left, nfa_t* right) {
 }
 
 nfa_t* new_repetition_nfa(nfa_t* old_nfa) {
-   nfa_t* nfa = (nfa_t*)xmalloc(sizeof(nfa_t));
+   nfa_t* nfa = new_nfa();
 
    // Turn off 'accepting' of previous nfa
    old_nfa->end->is_accepting = false;
@@ -222,8 +231,7 @@ nfa_t* new_repetition_nfa(nfa_t* old_nfa) {
    start_node->edges[0].to = old_nfa->start;
    start_node->edges[1].to = end_node;
 
-   // Create epsilon edges for old end node (could maybe reuse the edges alloced for start node? prob not a good idea
-   // since this would make freeing more complicated, as freeing an already freed pointer can be a runtime error)
+   // Create epsilon edges for old end node
    edge_t* old_end_edges = new_edges(2);
    for (int i = 0; i < 2; i++) {
       init_epsilon(&old_end_edges[i]);
@@ -232,10 +240,8 @@ nfa_t* new_repetition_nfa(nfa_t* old_nfa) {
    old_end_edges[1].to = end_node;
    set_node_edges(old_nfa->end, old_end_edges, 2);
 
-   // Hook up start and end to nfa and adjust accepting
-   nfa->start = start_node;
-   nfa->end = end_node;
-   nfa->end->is_accepting = true;
+   // Hook up start and end to nfa
+   nfa_set_start_end(nfa, start_node, end_node);
 
    // Free the old nfa, but not its contents;
    free(old_nfa);
@@ -244,12 +250,11 @@ nfa_t* new_repetition_nfa(nfa_t* old_nfa) {
 }
 
 nfa_t* new_literal_nfa(char value) {
-   nfa_t* nfa = (nfa_t*)xmalloc(sizeof(nfa_t));
+   nfa_t* nfa = new_nfa();
 
    // Create start and end nodes of literal nfa
    node_t* start_node = new_node(1);
    node_t* end_node = new_node(0);
-   end_node->is_accepting = true;
 
    // Init connecting edge with the literal value and make connection
    start_node->edges[0].value = value;
@@ -257,17 +262,35 @@ nfa_t* new_literal_nfa(char value) {
    start_node->edges[0].to = end_node;
 
    // Hook up start and end to nfa
-   nfa->start = start_node;
-   nfa->end = end_node;
+   nfa_set_start_end(nfa, start_node, end_node);
 
    return nfa;
+}
+
+nfa_t* new_nfa() {
+   nfa_t* nfa = (nfa_t*)xmalloc(sizeof(nfa_t));
+   nfa->start = NULL;
+   nfa->end = NULL;
+
+   nfa->__nodes = (list_t*)malloc(sizeof(list_t));
+   initialize_list(nfa->__nodes, free_node);
+
+   return nfa;
+}
+
+// Set start and end node, and set end node to be accepting
+void nfa_set_start_end(nfa_t* nfa, node_t* start, node_t* end) {
+   nfa->start = start;
+   nfa->end = end;
+   nfa->end->is_accepting = true;
 }
 
 // Alloc a node and its edges -> edges are empty and need to be initialized
 node_t* new_node(int num_edges) {
    node_t* node = (node_t*)xmalloc(sizeof(node_t));
+   node->id = node_id++;
    node->is_accepting = false;
-   node->__has_seen = false;
+   node->__marked = false;
 
    if (num_edges > 0) {
       edge_t* edges = new_edges(num_edges);
@@ -305,27 +328,41 @@ void init_epsilon(edge_t* edge) {
 }
 
 void free_nfa(nfa_t* nfa) {
-   free_node(nfa->start);
-   free_node(nfa->end);
+   // List to keep track of nodes marked for deletion (need to do it this way due to circular references)
+   list_t* marked_nodes = (list_t*)malloc(sizeof(list_t));
+   initialize_list(marked_nodes, free_node);
+
+   // Mark then free nodes
+   // - only need to free the start node, since all nodes are connected
+   mark_nodes(nfa->start, marked_nodes);
+   list_release(marked_nodes);
+
    free(nfa);
 }
 
-// TODO: this would probably result in infinite loop when there is a circular path in the NFA
-void free_node(node_t* node) {
-   if (node->__has_seen) {
+void mark_nodes(node_t* node, list_t* marked_nodes) {
+   if (node->__marked) {
       return;
    }
-   node->__has_seen = true;
+   node->__marked = true;
+   list_push(marked_nodes, node);
+
    for (int i = 0; i < node->num_edges; i++) {
-      free_node(node->edges[i].to);
-      // free(node->edges[i]);
+      mark_nodes(node->edges[i].to, marked_nodes);
    }
+
+   // free(node->edges);
+}
+
+void free_node(node_t* node) {
    free(node->edges);
    free(node);
 }
 
 static void print_spaces(int indentno) {
-   for (int i = 0; i < indentno; i++) printf(" ");
+   for (int i = 0; i < indentno; i++) {
+      printf(" ");
+   }
 }
 
 /* procedure printTree prints a syntax tree to the 
@@ -372,7 +409,7 @@ int main() {
       error();
    }
 
-   // free_nfa(result);
+   free_nfa(result);
 
    return 0;
 }
