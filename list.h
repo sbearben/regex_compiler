@@ -12,14 +12,14 @@ typedef struct list {
       void (*destructor)(void*);
 } list_t;
 
-void initialize_list(list_t* list, void (*destructor)(void*));
+void list_initialize(list_t* list, void (*destructor)(void*));
 void list_push(list_t* list, void* data);
 list_t* list_concat(list_t* list1, list_t* list2);
 bool list_contains(list_t* list, void* data, int (*compare)(void*, void*));
 void list_release(list_t* list);
 void list_for_each(list_t* list, void (*execute)(void*));
 
-void initialize_list(list_t* list, void (*destructor)(void*)) {
+void list_initialize(list_t* list, void (*destructor)(void*)) {
    list->head = NULL;
    list->tail = NULL;
    list->destructor = destructor;
