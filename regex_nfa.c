@@ -71,7 +71,10 @@ nfa_t* new_literal_nfa(char);
 
 // Generic constructors and setters
 nfa_t* new_nfa();
+void nfa_consume_nodes(nfa_t*, nfa_t*);
 void nfa_set_start_end(nfa_t*, node_t*, node_t*);
+node_t* nfa_new_node(nfa_t*, int);
+// TODO: potentially delete this
 node_t* new_node(int);
 edge_t* new_edges(int);
 void set_node_edges(node_t*, edge_t*, int);
@@ -156,13 +159,16 @@ nfa_t* factor(void) {
 nfa_t* new_choice_nfa(nfa_t* left, nfa_t* right) {
    nfa_t* nfa = new_nfa();
 
+   nfa_consume_nodes(nfa, left);
+   nfa_consume_nodes(nfa, right);
+
    // Turn off 'accepting' of both sides
    left->end->is_accepting = false;
    right->end->is_accepting = false;
 
    // Create the start and end nodes of choice nfa
-   node_t* start_node = new_node(2);
-   node_t* end_node = new_node(0);
+   node_t* start_node = nfa_new_node(nfa, 2);
+   node_t* end_node = nfa_new_node(nfa, 0);
 
    // Initialize epsilon edges for start node
    for (int i = 0; i < start_node->num_edges; i++) {
@@ -178,6 +184,7 @@ nfa_t* new_choice_nfa(nfa_t* left, nfa_t* right) {
       edges_to_end[i].to = end_node;
    }
    set_node_edges(left->end, &edges_to_end[0], 1);
+   // TODO right->start looks like a bug here (should be right->end I think)
    set_node_edges(right->start, &edges_to_end[1], 1);
 
    // Hook up start and end to nfa
@@ -192,6 +199,8 @@ nfa_t* new_choice_nfa(nfa_t* left, nfa_t* right) {
 
 nfa_t* new_concat_nfa(nfa_t* left, nfa_t* right) {
    nfa_t* nfa = new_nfa();
+   nfa_consume_nodes(nfa, left);
+   nfa_consume_nodes(nfa, right);
 
    // Turn off 'accepting' of both sides
    left->end->is_accepting = false;
@@ -216,13 +225,14 @@ nfa_t* new_concat_nfa(nfa_t* left, nfa_t* right) {
 
 nfa_t* new_repetition_nfa(nfa_t* old_nfa) {
    nfa_t* nfa = new_nfa();
+   nfa_consume_nodes(nfa, old_nfa);
 
    // Turn off 'accepting' of previous nfa
    old_nfa->end->is_accepting = false;
 
    // Create the start and end nodes of repetition nfa
-   node_t* start_node = new_node(2);
-   node_t* end_node = new_node(0);
+   node_t* start_node = nfa_new_node(nfa, 2);
+   node_t* end_node = nfa_new_node(nfa, 0);
 
    // Initialize epsilon edges for start node
    for (int i = 0; i < start_node->num_edges; i++) {
@@ -253,8 +263,8 @@ nfa_t* new_literal_nfa(char value) {
    nfa_t* nfa = new_nfa();
 
    // Create start and end nodes of literal nfa
-   node_t* start_node = new_node(1);
-   node_t* end_node = new_node(0);
+   node_t* start_node = nfa_new_node(nfa, 1);
+   node_t* end_node = nfa_new_node(nfa, 0);
 
    // Init connecting edge with the literal value and make connection
    start_node->edges[0].value = value;
@@ -278,11 +288,24 @@ nfa_t* new_nfa() {
    return nfa;
 }
 
+// Adds nodes from the 'other' nfa to target nfa and frees the 'other' nodes list (but not its elements whuch have been transfered)
+void nfa_consume_nodes(nfa_t* nfa, nfa_t* other) {
+   list_concat(nfa->__nodes, other->__nodes);
+   free(other->__nodes);
+}
+
 // Set start and end node, and set end node to be accepting
 void nfa_set_start_end(nfa_t* nfa, node_t* start, node_t* end) {
    nfa->start = start;
    nfa->end = end;
    nfa->end->is_accepting = true;
+}
+
+node_t* nfa_new_node(nfa_t* nfa, int num_edges) {
+   node_t* node = new_node(num_edges);
+   list_push(nfa->__nodes, node);
+
+   return node;
 }
 
 // Alloc a node and its edges -> edges are empty and need to be initialized

@@ -38,11 +38,9 @@ void list_push(list_t* list, void* data) {
    list->tail = node;
 }
 
-// Concat list2 onto list1
+// Concat list2 onto list1 (TODO: maybe should copy list2 first)
 list_t* list_concat(list_t* list1, list_t* list2) {
    list1->tail = list2->head;
-   free(list2);
-
    return list1;
 }
 
