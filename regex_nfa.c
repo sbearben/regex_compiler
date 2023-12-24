@@ -83,7 +83,7 @@ void init_epsilon(edge_t*);
 // Generic destructors
 void free_nfa(nfa_t*);
 void mark_nodes(node_t*, list_t*);
-void free_node(node_t*);
+void free_list_node(void*);
 
 void* xmalloc(size_t size) {
    void* ptr = malloc(size);
@@ -282,7 +282,7 @@ nfa_t* new_nfa() {
    nfa->end = NULL;
 
    nfa->__nodes = (list_t*)malloc(sizeof(list_t));
-   initialize_list(nfa->__nodes, free_node);
+   initialize_list(nfa->__nodes, free_list_node);
 
    return nfa;
 }
@@ -352,7 +352,7 @@ void init_epsilon(edge_t* edge) {
 void free_nfa(nfa_t* nfa) {
    // List to keep track of nodes marked for deletion (need to do it this way due to circular references)
    list_t* marked_nodes = (list_t*)malloc(sizeof(list_t));
-   initialize_list(marked_nodes, free_node);
+   initialize_list(marked_nodes, free_list_node);
 
    // Mark then free nodes
    // - only need to free the start node, since all nodes are connected
@@ -376,7 +376,8 @@ void mark_nodes(node_t* node, list_t* marked_nodes) {
    // free(node->edges);
 }
 
-void free_node(node_t* node) {
+void free_list_node(void* data) {
+   node_t* node = (node_t*)data;
    free(node->edges);
    free(node);
 }
