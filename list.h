@@ -50,6 +50,7 @@ bool list_contains(list_t* list, void* data, int (*compare)(void*, void*)) {
    bool contains = false;
    while (node != NULL && contains == false) {
       contains = compare != NULL ? compare(node->data, data) == 0 : node->data == data;
+      node = node->next;
    }
    return contains;
 }
