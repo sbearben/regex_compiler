@@ -82,9 +82,14 @@ void init_epsilon(edge_t*);
 
 // Generic destructors
 void free_nfa(nfa_t*);
-void mark_nodes(node_t*, list_t*);
 void free_list_node(void*);
-void nfa_traverse(nfa_t*);
+void nfa_traverse(nfa_t*, void (*on_node)(node_t*), void (*on_edge)(edge_t*));
+void nodes_traverse(node_t*, void (*on_node)(node_t*), void (*on_edge)(edge_t*), list_t*);
+
+// Logging
+void log_nfa(nfa_t*, int);
+void log_node(node_t*);
+void log_edge(edge_t*);
 
 void* xmalloc(size_t size) {
    void* ptr = malloc(size);
@@ -356,18 +361,31 @@ void free_nfa(nfa_t* nfa) {
    free(nfa);
 }
 
-void mark_nodes(node_t* node, list_t* marked_nodes) {
-   if (node->__marked) {
+void nfa_traverse(nfa_t* nfa, void (*on_node)(node_t*), void (*on_edge)(edge_t*)) {
+   list_t* seen_nodes = (list_t*)malloc(sizeof(list_t));
+   list_initialize(seen_nodes, NULL);
+
+   nodes_traverse(nfa->start, on_node, on_edge, seen_nodes);
+
+   free(seen_nodes);
+}
+
+void nodes_traverse(node_t* node, void (*on_node)(node_t*), void (*on_edge)(edge_t*),
+                    list_t* seen_nodes) {
+   if (list_contains(seen_nodes, node, NULL)) {
       return;
    }
-   node->__marked = true;
-   list_push(marked_nodes, node);
-
-   for (int i = 0; i < node->num_edges; i++) {
-      mark_nodes(node->edges[i].to, marked_nodes);
+   list_push(seen_nodes, node);
+   if (on_node != NULL) {
+      on_node(node);
    }
 
-   // free(node->edges);
+   for (int i = 0; i < node->num_edges; i++) {
+      if (on_edge != NULL) {
+         on_edge(&node->edges[i]);
+      }
+      nodes_traverse(node->edges[i].to, on_node, on_edge, seen_nodes);
+   }
 }
 
 void free_list_node(void* data) {
@@ -378,39 +396,26 @@ void free_list_node(void* data) {
    free(node);
 }
 
-static void print_spaces(int indentno) {
-   for (int i = 0; i < indentno; i++) {
-      printf(" ");
+void log_node(node_t* node) {
+   printf("Node %d: %s\n", node->id, node->is_accepting ? "accepting" : "not accepting");
+   for (int i = 0; i < node->num_edges; i++) {
+      printf("\t");
+      log_edge(&node->edges[i]);
    }
 }
 
-/* procedure printTree prints a syntax tree to the 
- * listing file using indentation to indicate subtrees
- */
-void print_nfa(nfa_t* nfa, int indentno) {
-   // print_spaces(indentno);
-   // switch (tree->kind) {
-   //    case Choice:
-   //       printf("Choice\n");
-   //       print_nfa(tree->child, indentno + 2);
-   //       print_nfa(tree->rchild, indentno + 2);
-   //       break;
-   //    case Concat:
-   //       printf("Concat\n");
-   //       print_nfa(tree->child, indentno + 2);
-   //       print_nfa(tree->rchild, indentno + 2);
-   //       break;
-   //    case Repetition:
-   //       printf("Repetition\n");
-   //       print_nfa(tree->child, indentno + 2);
-   //       break;
-   //    case Literal:
-   //       printf("Literal: %c\n", tree->val);
-   //       break;
-   //    default:
-   //       printf("Unknown node kind\n");
-   //       break;
-   // }
+void log_edge(edge_t* edge) {
+   if (edge->is_epsilon) {
+      printf("Edge: epsilon\n");
+   } else {
+      printf("Edge: %c\n", edge->value);
+   }
+}
+
+// Traverse nfa and log node/edge info
+void log_nfa(nfa_t* nfa, int indentno) {
+   printf("NFA:\n");
+   nfa_traverse(nfa, log_node, NULL);
 }
 
 int main() {
@@ -419,7 +424,7 @@ int main() {
    nfa_t* result = regexp();
    // newline signals successful parse
    if (token == '\n') {
-      print_nfa(result, 2);
+      log_nfa(result, 2);
       // char input[256];
       // printf("Enter string to match: ");
       // fgets(input, 256, stdin);
