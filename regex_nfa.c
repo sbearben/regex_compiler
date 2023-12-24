@@ -77,13 +77,14 @@ node_t* nfa_new_node(nfa_t*, int);
 // TODO: potentially delete this
 node_t* new_node(int);
 edge_t* new_edges(int);
-void set_node_edges(node_t*, edge_t*, int);
+void node_set_edges(node_t*, edge_t*, int);
 void init_epsilon(edge_t*);
 
 // Generic destructors
 void free_nfa(nfa_t*);
 void mark_nodes(node_t*, list_t*);
 void free_list_node(void*);
+void nfa_traverse(nfa_t*);
 
 void* xmalloc(size_t size) {
    void* ptr = malloc(size);
@@ -183,8 +184,8 @@ nfa_t* new_choice_nfa(nfa_t* left, nfa_t* right) {
       init_epsilon(&edges_to_end[i]);
       edges_to_end[i].to = end_node;
    }
-   set_node_edges(left->end, &edges_to_end[0], 1);
-   set_node_edges(right->end, &edges_to_end[1], 1);
+   node_set_edges(left->end, &edges_to_end[0], 1);
+   node_set_edges(right->end, &edges_to_end[1], 1);
 
    // Hook up start and end to nfa
    nfa_set_start_end(nfa, start_node, end_node);
@@ -209,7 +210,7 @@ nfa_t* new_concat_nfa(nfa_t* left, nfa_t* right) {
    edge_t* edges = new_edges(1);
    init_epsilon(edges);
    // Make the connection between the left and right side using the new 'edge'
-   set_node_edges(left->end, edges, 1);
+   node_set_edges(left->end, edges, 1);
    edges->to = right->start;
 
    // Hook up start and end to nfa
@@ -247,7 +248,7 @@ nfa_t* new_repetition_nfa(nfa_t* old_nfa) {
    }
    old_end_edges[0].to = old_nfa->start;
    old_end_edges[1].to = end_node;
-   set_node_edges(old_nfa->end, old_end_edges, 2);
+   node_set_edges(old_nfa->end, old_end_edges, 2);
 
    // Hook up start and end to nfa
    nfa_set_start_end(nfa, start_node, end_node);
@@ -335,7 +336,7 @@ edge_t* new_edges(int num) {
    return edges;
 }
 
-void set_node_edges(node_t* node, edge_t* edges, int num_edges) {
+void node_set_edges(node_t* node, edge_t* edges, int num_edges) {
    // I believe it should always be the case that any node we are setting edges on didn't
    // have any edges previously - thus there is no need to free any previous edges.
    assert(node->edges == NULL);
@@ -371,7 +372,9 @@ void mark_nodes(node_t* node, list_t* marked_nodes) {
 
 void free_list_node(void* data) {
    node_t* node = (node_t*)data;
-   free(node->edges);
+   if (node->edges != NULL) {
+      free(node->edges);
+   }
    free(node);
 }
 
