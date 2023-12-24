@@ -184,8 +184,7 @@ nfa_t* new_choice_nfa(nfa_t* left, nfa_t* right) {
       edges_to_end[i].to = end_node;
    }
    set_node_edges(left->end, &edges_to_end[0], 1);
-   // TODO right->start looks like a bug here (should be right->end I think)
-   set_node_edges(right->start, &edges_to_end[1], 1);
+   set_node_edges(right->end, &edges_to_end[1], 1);
 
    // Hook up start and end to nfa
    nfa_set_start_end(nfa, start_node, end_node);
