@@ -103,35 +103,28 @@ void match(char expectedToken) {
 }
 
 nfa_t* regexp(void) {
-   // TODO: for this, 'concat' and 'repitition' -> do we need two pointers?
-   nfa_t *temp, *next;
-   temp = concat();
+   nfa_t* temp = concat();
    while (token == '|') {
       match('|');
-      next = new_choice_nfa(temp, concat());
-      temp = next;
+      temp = new_choice_nfa(temp, concat());
    }
    return temp;
 }
 
 nfa_t* concat(void) {
-   nfa_t *temp, *next;
-   temp = repetition();
+   nfa_t* temp = repetition();
    while (isalnum(token) || token == '(') {
       // We don't match here since current token is part of first set of `factor`, so if we matched the conditions in factor will fail
-      next = new_concat_nfa(temp, repetition());
-      temp = next;
+      temp = new_concat_nfa(temp, repetition());
    }
    return temp;
 }
 
 nfa_t* repetition(void) {
-   nfa_t *temp, *next;
-   temp = factor();
+   nfa_t* temp = factor();
    if (token == '*') {
       match('*');
-      next = new_repetition_nfa(temp);
-      temp = next;
+      temp = new_repetition_nfa(temp);
    }
    return temp;
 }
@@ -358,7 +351,7 @@ void nfa_traverse(nfa_t* nfa, void (*on_node)(node_t*), void (*on_edge)(edge_t*)
 
    nodes_traverse(nfa->start, on_node, on_edge, seen_nodes);
 
-   // TODO: Uhh need to releas the inner list_node_t's as well
+   // TODO: Uhh need to release the inner list_node_t's as well
    free(seen_nodes);
 }
 
