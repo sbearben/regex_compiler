@@ -130,7 +130,7 @@ nfa_t* repetition(void) {
 }
 
 nfa_t* factor(void) {
-   nfa_t* temp;
+   nfa_t* temp = NULL;
    if (token == '(') {
       match('(');
       temp = regexp();
