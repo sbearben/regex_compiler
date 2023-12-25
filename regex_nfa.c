@@ -38,7 +38,7 @@ int node_id = 0;
 struct node {
       int id;
       bool is_accepting;
-      edge_t* edges;  // Array of edges connected to other nodes
+      edge_t* edges;  // Array of edges connected to other nodes (might be better as a linked list)
       int num_edges;
 };
 
@@ -173,13 +173,16 @@ nfa_t* new_choice_nfa(nfa_t* left, nfa_t* right) {
    start_node->edges[1].to = right->start;
 
    // Create epsilon edges that connect to end node
-   edge_t* edges_to_end = new_edges(2);
-   for (int i = 0; i < 2; i++) {
-      init_epsilon(&edges_to_end[i]);
-      edges_to_end[i].to = end_node;
-   }
-   node_set_edges(left->end, &edges_to_end[0], 1);
-   node_set_edges(right->end, &edges_to_end[1], 1);
+   // Left-end -> end
+   edge_t* left_edge_to_end = new_edges(1);
+   init_epsilon(left_edge_to_end);
+   left_edge_to_end->to = end_node;
+   node_set_edges(left->end, left_edge_to_end, 1);
+   // Right-end -> end
+   edge_t* right_edge_to_end = new_edges(1);
+   init_epsilon(right_edge_to_end);
+   right_edge_to_end->to = end_node;
+   node_set_edges(right->end, right_edge_to_end, 1);
 
    // Hook up start and end to nfa
    nfa_set_start_end(nfa, start_node, end_node);

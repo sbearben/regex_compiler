@@ -1,3 +1,6 @@
+#ifndef LIST_H
+#define LIST_H
+
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -89,4 +92,4 @@ void list_for_each(list_t* list, void (*execute)(list_node_t*)) {
    }
 }
 
-// Traverse each element in the list
+#endif  // LIST_H
