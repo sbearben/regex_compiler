@@ -4,13 +4,22 @@ OUTDIR = bin
 
 all: regex_nfa
 
-regex_nfa: regex_nfa.c #dfa_machine.c
-	$(CC) $(CCFLAGS) $^ -o ./$(OUTDIR)/$@ $(LDFLAGS)
+regex_nfa: regex_nfa.c nfa.o list.o utils.o
+	$(CC) $(CCFLAGS) $^ -o ./$(OUTDIR)/$@ 
+
+nfa.o: nfa.c list.o
+	$(CC) $(CCFLAGS) $^ -o $@ -c
+
+list.o: list.c
+	$(CC) $(CCFLAGS) $^ -o $@ -c
+
+utils.o: utils.c
+	$(CC) $(CCFLAGS) $^ -o $@ -c
 
 .PHONY: clean format
 
 clean:
-	rm -f ./$(OUTDIR)/*
+	rm -f ./$(OUTDIR)/* *.o
 
 format:
 	clang-format -style=file -i *.c *.h
