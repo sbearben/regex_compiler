@@ -347,12 +347,11 @@ void free_nfa(nfa_t* nfa) {
 
 void nfa_traverse(nfa_t* nfa, void (*on_node)(node_t*), void (*on_edge)(edge_t*)) {
    list_t* seen_nodes = (list_t*)malloc(sizeof(list_t));
-   list_initialize(seen_nodes, NULL);
+   list_initialize(seen_nodes, list_noop_data_destructor);
 
    nodes_traverse(nfa->start, on_node, on_edge, seen_nodes);
 
-   // TODO: Uhh need to release the inner list_node_t's as well
-   free(seen_nodes);
+   list_release(seen_nodes);
 }
 
 void nodes_traverse(node_t* node, void (*on_node)(node_t*), void (*on_edge)(edge_t*),

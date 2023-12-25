@@ -75,10 +75,14 @@ void list_release(list_t* list) {
    free(list);
 }
 
+// Default destructor for list nodes (free the data and the node)
 void list_default_destructor(list_node_t* node) {
    free(node->data);
    free(node);
 }
+
+// Destructor for list nodes that frees the node only but not the data
+void list_noop_data_destructor(list_node_t* node) { free(node); }
 
 // Traverse each node in the list
 void list_for_each(list_t* list, void (*execute)(list_node_t*)) {
