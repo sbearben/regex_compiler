@@ -38,7 +38,11 @@ void init_epsilon(edge_t*);
 
 // Generic destructors
 void free_nfa(nfa_t*);
-void nfa_traverse(nfa_t*, void (*on_node)(node_t*), void (*on_edge)(edge_t*));
+
+// Traversal
+typedef void (*on_node_f)(node_t*);
+typedef void (*on_edge_f)(edge_t*);
+void nfa_traverse(nfa_t*, on_node_f, on_edge_f);
 
 // Logging
 void log_nfa(nfa_t*);

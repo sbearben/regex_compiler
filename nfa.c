@@ -7,8 +7,7 @@
 
 static int node_id = 0;
 
-static void nodes_traverse(node_t* node, void (*on_node)(node_t*), void (*on_edge)(edge_t*),
-                           list_t* seen_nodes);
+static void nodes_traverse(node_t* node, on_node_f, on_edge_f, list_t* seen_nodes);
 static void free_list_node(list_node_t* list_node);
 static void log_node(node_t* node);
 static void log_edge(edge_t* edge);
@@ -100,7 +99,7 @@ void free_nfa(nfa_t* nfa) {
    free(nfa);
 }
 
-void nfa_traverse(nfa_t* nfa, void (*on_node)(node_t*), void (*on_edge)(edge_t*)) {
+void nfa_traverse(nfa_t* nfa, on_node_f on_node, on_edge_f on_edge) {
    list_t* seen_nodes = (list_t*)malloc(sizeof(list_t));
    list_initialize(seen_nodes, list_noop_data_destructor);
 
@@ -109,8 +108,7 @@ void nfa_traverse(nfa_t* nfa, void (*on_node)(node_t*), void (*on_edge)(edge_t*)
    list_release(seen_nodes);
 }
 
-static void nodes_traverse(node_t* node, void (*on_node)(node_t*), void (*on_edge)(edge_t*),
-                           list_t* seen_nodes) {
+static void nodes_traverse(node_t* node, on_node_f on_node, on_edge_f on_edge, list_t* seen_nodes) {
    if (list_contains(seen_nodes, node, NULL)) {
       return;
    }

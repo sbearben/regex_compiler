@@ -21,6 +21,15 @@
 #include "nfa.h"
 #include "utils.h"
 
+/**
+ * Improvement ideas:
+ * - Instead of `start` on nfa be a node, make it an edge that points to the start node
+ *   - this might make it easier to compose nfas
+ * - Add support for '?' and '+' operators
+ * - Add support for character classes / ranges
+ * - Add support for escape sequences
+ */
+
 // Holds the current input character for the parse
 char token;
 
