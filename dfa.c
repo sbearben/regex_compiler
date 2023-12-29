@@ -120,40 +120,34 @@ void log_dfa(dfa_t* dfa) {
 static epsilon_closure_t* new_epsilon_closure() {
    epsilon_closure_t* epsilon_closure = (epsilon_closure_t*)xmalloc(sizeof(epsilon_closure_t));
    epsilon_closure->id = NULL;
-   epsilon_closure->nodes = (list_t*)malloc(sizeof(list_t));
-   list_initialize(epsilon_closure->nodes, list_noop_data_destructor);
    epsilon_closure->marked = false;
 
-   //  epsilon_closure->edges = NULL;
-   //  epsilon_closure->num_edges = 0;
+   epsilon_closure->nodes = (list_t*)malloc(sizeof(list_t));
+   list_initialize(epsilon_closure->nodes, list_noop_data_destructor);
 
    return epsilon_closure;
 }
 
-static epsilon_closure_t* compute_epsilon_closure(nfa_node_t* node) {
+static void free_epsilon_closure(epsilon_closure_t* epsilon_closure) {
+   free(epsilon_closure->id);
+   list_release(epsilon_closure->nodes);
+   free(epsilon_closure);
+}
+
+static epsilon_closure_t* compute_epsilon_closure(nfa_node_t* nfa_node) {
    epsilon_closure_t* epsilon_closure = new_epsilon_closure();
-   // Create string id from node id
-   epsilon_closure->id = (char*)xmalloc(sizeof(char) * num_places(node->id) + 1);
-   sprintf(epsilon_closure->id, "%d", node->id);
+   // Make copy of node->id
+   epsilon_closure->id = (char*)xmalloc(sizeof(char) * num_places(nfa_node->id) + 1);
+   sprintf(epsilon_closure->id, "%d", nfa_node->id);
 
-   __compute_epsilon_closure(node, epsilon_closure);
+   __compute_epsilon_closure(nfa_node, epsilon_closure);
 
    return epsilon_closure;
 }
-
-// We can create e-closures for each node in the nfa
-//   - id of this e-closure is the id of the node
-// We can also create e-closures for sets of nodes in the nfa
-//   - id of this e-closure would be the set of ids of the nfa nodes in the set
-// These e-closures are what creates nodes in the dfa
-//   - edges in dfa essentially connect e-closures
 
 static epsilon_closure_t* compute_epsilon_closure_for_set(list_t* nfa_nodes) {
    epsilon_closure_t* set_eclosure = new_epsilon_closure();
    set_eclosure->id = create_id_for_set(nfa_nodes);
-
-   // - compute epsilon closure for each node in the set
-   // - create set union of all epsilon closures
 
    list_node_t* current_nfa;
    list_traverse(nfa_nodes, current_nfa) {
@@ -173,16 +167,16 @@ static epsilon_closure_t* compute_epsilon_closure_for_set(list_t* nfa_nodes) {
    return set_eclosure;
 }
 
-static void __compute_epsilon_closure(nfa_node_t* node, epsilon_closure_t* epsilon_closure) {
-   if (list_contains(epsilon_closure->nodes, node, NULL)) {
+static void __compute_epsilon_closure(nfa_node_t* nfa_node, epsilon_closure_t* epsilon_closure) {
+   if (list_contains(epsilon_closure->nodes, nfa_node, NULL)) {
       return;
    }
 
-   list_push(epsilon_closure->nodes, node);
+   list_push(epsilon_closure->nodes, nfa_node);
 
-   for (int i = 0; i < node->num_edges; i++) {
-      if (node->edges[i].is_epsilon) {
-         __compute_epsilon_closure(node->edges[i].to, epsilon_closure);
+   for (int i = 0; i < nfa_node->num_edges; i++) {
+      if (nfa_node->edges[i].is_epsilon) {
+         __compute_epsilon_closure(nfa_node->edges[i].to, epsilon_closure);
       }
    }
 }
@@ -268,7 +262,6 @@ static list_t* compute_move_set(list_t* nfa_nodes, char symbol) {
             printf("[compute_move_set] Adding node %d - has transition on %c\n",
                    nfa_node->edges[i].to->id, symbol);
             list_push(nodes_with_transition, nfa_node->edges[i].to);
-            // break;
          }
       }
    }
@@ -286,15 +279,6 @@ static epsilon_closure_t* find_unmarked_closure(list_t* eclosures) {
    }
 
    return NULL;
-}
-
-/**
- * Destructors
-*/
-static void free_epsilon_closure(epsilon_closure_t* epsilon_closure) {
-   free(epsilon_closure->id);
-   list_release(epsilon_closure->nodes);
-   free(epsilon_closure);
 }
 
 /**
