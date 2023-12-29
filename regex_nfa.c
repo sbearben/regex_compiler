@@ -119,8 +119,8 @@ static nfa_t* new_choice_nfa(nfa_t* left, nfa_t* right) {
    right->end->is_accepting = false;
 
    // Create the start and end nodes of choice nfa
-   node_t* start_node = nfa_new_node(nfa, 2);
-   node_t* end_node = nfa_new_node(nfa, 0);
+   nfa_node_t* start_node = nfa_new_node(nfa, 2);
+   nfa_node_t* end_node = nfa_new_node(nfa, 0);
 
    // Initialize epsilon edges for start node
    for (int i = 0; i < start_node->num_edges; i++) {
@@ -131,12 +131,12 @@ static nfa_t* new_choice_nfa(nfa_t* left, nfa_t* right) {
 
    // Create epsilon edges that connect to end node
    // Left-end -> end
-   edge_t* left_edge_to_end = new_edges(1);
+   nfa_edge_t* left_edge_to_end = new_edges(1);
    init_epsilon(left_edge_to_end);
    left_edge_to_end->to = end_node;
    node_set_edges(left->end, left_edge_to_end, 1);
    // Right-end -> end
-   edge_t* right_edge_to_end = new_edges(1);
+   nfa_edge_t* right_edge_to_end = new_edges(1);
    init_epsilon(right_edge_to_end);
    right_edge_to_end->to = end_node;
    node_set_edges(right->end, right_edge_to_end, 1);
@@ -161,7 +161,7 @@ static nfa_t* new_concat_nfa(nfa_t* left, nfa_t* right) {
    right->end->is_accepting = false;
 
    // Create the connecting epsilon edge
-   edge_t* edges = new_edges(1);
+   nfa_edge_t* edges = new_edges(1);
    init_epsilon(edges);
    // Make the connection between the left and right side using the new 'edge'
    edges->to = right->start;
@@ -185,8 +185,8 @@ static nfa_t* new_repetition_nfa(nfa_t* old_nfa) {
    old_nfa->end->is_accepting = false;
 
    // Create the start and end nodes of repetition nfa
-   node_t* start_node = nfa_new_node(nfa, 2);
-   node_t* end_node = nfa_new_node(nfa, 0);
+   nfa_node_t* start_node = nfa_new_node(nfa, 2);
+   nfa_node_t* end_node = nfa_new_node(nfa, 0);
 
    // Initialize epsilon edges for start node
    for (int i = 0; i < start_node->num_edges; i++) {
@@ -196,7 +196,7 @@ static nfa_t* new_repetition_nfa(nfa_t* old_nfa) {
    start_node->edges[1].to = end_node;
 
    // Create epsilon edges for old end node
-   edge_t* old_end_edges = new_edges(2);
+   nfa_edge_t* old_end_edges = new_edges(2);
    for (int i = 0; i < 2; i++) {
       init_epsilon(&old_end_edges[i]);
    }
@@ -217,8 +217,8 @@ static nfa_t* new_literal_nfa(char value) {
    nfa_t* nfa = new_nfa();
 
    // Create start and end nodes of literal nfa
-   node_t* start_node = nfa_new_node(nfa, 1);
-   node_t* end_node = nfa_new_node(nfa, 0);
+   nfa_node_t* start_node = nfa_new_node(nfa, 1);
+   nfa_node_t* end_node = nfa_new_node(nfa, 0);
 
    // Init connecting edge with the literal value and make connection
    start_node->edges[0].value = value;

@@ -17,9 +17,9 @@ typedef struct epsilon_closure {
 } epsilon_closure_t;
 
 static epsilon_closure_t* new_epsilon_closure();
-static epsilon_closure_t* compute_epsilon_closure(node_t* node);
+static epsilon_closure_t* compute_epsilon_closure(nfa_node_t* node);
 static epsilon_closure_t* compute_epsilon_closure_for_set(list_t* nfa_nodes);
-static void __compute_epsilon_closure(node_t* node, epsilon_closure_t* epsilon_closure);
+static void __compute_epsilon_closure(nfa_node_t* node, epsilon_closure_t* epsilon_closure);
 static void free_epsilon_closure(epsilon_closure_t* epsilon_closure);
 
 static dfa_node_t* dfa_node_from_epsilon_closure(epsilon_closure_t* epsilon_closure);
@@ -130,7 +130,7 @@ static epsilon_closure_t* new_epsilon_closure() {
    return epsilon_closure;
 }
 
-static epsilon_closure_t* compute_epsilon_closure(node_t* node) {
+static epsilon_closure_t* compute_epsilon_closure(nfa_node_t* node) {
    epsilon_closure_t* epsilon_closure = new_epsilon_closure();
    // Create string id from node id
    epsilon_closure->id = (char*)xmalloc(sizeof(char) * num_places(node->id) + 1);
@@ -157,7 +157,7 @@ static epsilon_closure_t* compute_epsilon_closure_for_set(list_t* nfa_nodes) {
 
    list_node_t* current_nfa;
    list_traverse(nfa_nodes, current_nfa) {
-      epsilon_closure_t* node_closure = compute_epsilon_closure((node_t*)current_nfa->data);
+      epsilon_closure_t* node_closure = compute_epsilon_closure((nfa_node_t*)current_nfa->data);
       list_node_t* current_closure_nfa_node;
       list_traverse(node_closure->nodes, current_closure_nfa_node) {
          if (!list_contains(set_eclosure->nodes, current_closure_nfa_node->data, NULL)) {
@@ -173,7 +173,7 @@ static epsilon_closure_t* compute_epsilon_closure_for_set(list_t* nfa_nodes) {
    return set_eclosure;
 }
 
-static void __compute_epsilon_closure(node_t* node, epsilon_closure_t* epsilon_closure) {
+static void __compute_epsilon_closure(nfa_node_t* node, epsilon_closure_t* epsilon_closure) {
    if (list_contains(epsilon_closure->nodes, node, NULL)) {
       return;
    }
@@ -199,7 +199,7 @@ dfa_node_t* dfa_node_from_epsilon_closure(epsilon_closure_t* epsilon_closure) {
 
    list_node_t* current;
    list_traverse(epsilon_closure->nodes, current) {
-      if (((node_t*)current->data)->is_accepting) {
+      if (((nfa_node_t*)current->data)->is_accepting) {
          dfa_node->is_accepting = true;
          break;
       }
@@ -226,9 +226,9 @@ static char* create_id_for_set(list_t* nfa_nodes) {
    list_node_t* current;
    list_traverse(nfa_nodes, current) {
       if (id[0] == '\0') {
-         sprintf(id, "%d", ((node_t*)current->data)->id);
+         sprintf(id, "%d", ((nfa_node_t*)current->data)->id);
       } else {
-         sprintf(id, "%s/%d", id, ((node_t*)current->data)->id);
+         sprintf(id, "%s/%d", id, ((nfa_node_t*)current->data)->id);
       }
    }
 
@@ -242,7 +242,7 @@ static list_t* compute_transition_symbols(epsilon_closure_t* closure) {
 
    list_node_t* current;
    list_traverse(closure->nodes, current) {
-      node_t* node = (node_t*)current->data;
+      nfa_node_t* node = (nfa_node_t*)current->data;
       for (int i = 0; i < node->num_edges; i++) {
          if (!node->edges[i].is_epsilon &&
              !list_contains(symbols, (void*)node->edges[i].value, NULL)) {
@@ -261,7 +261,7 @@ static list_t* compute_move_set(list_t* nfa_nodes, char symbol) {
 
    list_node_t* current;
    list_traverse(nfa_nodes, current) {
-      node_t* nfa_node = (node_t*)current->data;
+      nfa_node_t* nfa_node = (nfa_node_t*)current->data;
       printf("[compute_move_set] Node %d - num_edges: %d\n", nfa_node->id, nfa_node->num_edges);
       for (int i = 0; i < nfa_node->num_edges; i++) {
          if (nfa_node->edges[i].value == symbol) {
@@ -302,7 +302,7 @@ static void free_epsilon_closure(epsilon_closure_t* epsilon_closure) {
 */
 
 static int nfa_node_comparator(void* data1, void* data2) {
-   return ((node_t*)data1)->id - ((node_t*)data2)->id;
+   return ((nfa_node_t*)data1)->id - ((nfa_node_t*)data2)->id;
 }
 
 static int epsilon_closure_comparator(void* data1, void* data2) {
