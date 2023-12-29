@@ -4,8 +4,10 @@
 #include "list.h"
 
 typedef struct nfa nfa_t;
-typedef struct node node_t;
-typedef struct edge edge_t;
+// TODO: Rename to nfa_node_t
+typedef struct nfa_node node_t;
+// TODO: Rename to nfa_edge_t
+typedef struct nfa_edge edge_t;
 
 struct nfa {
       node_t* start;
@@ -13,14 +15,14 @@ struct nfa {
       list_t* __nodes;
 };
 
-struct node {
+struct nfa_node {
       int id;
       bool is_accepting;
       edge_t* edges;  // Array of edges connected to other nodes (might be better as a linked list)
       int num_edges;
 };
 
-struct edge {
+struct nfa_edge {
       char value;  // null character if is_epsilon is true
       bool is_epsilon;
       node_t* to;
