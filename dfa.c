@@ -66,8 +66,13 @@ dfa_t* dfa_from_nfa(nfa_t* nfa) {
       list_node_t* current_symbol_node;
       list_traverse(transitions, current_symbol_node) {
          char transition_symbol = (char)current_symbol_node->data;
+         printf("[dfa_from_nfa] current_dfa_node %s - transition_symbol: %c\n",
+                current_dfa_node->id, transition_symbol);
+
          list_t* move_result = compute_move_set(current_closure->nodes, transition_symbol);
          epsilon_closure_t* next_closure = compute_epsilon_closure_for_set(move_result);
+
+         printf("[dfa_from_nfa] Next closure: %s\n\n", next_closure->id);
 
          if (!list_contains(eclosures_stack, next_closure, epsilon_closure_comparator)) {
             next_closure->marked = false;
@@ -250,17 +255,20 @@ static list_t* compute_transition_symbols(epsilon_closure_t* closure) {
 }
 
 // Allocates a list_t* with nodes that need to be released
-static list_t* compute_move_set(list_t* nodes, char symbol) {
+static list_t* compute_move_set(list_t* nfa_nodes, char symbol) {
    list_t* nodes_with_transition = (list_t*)malloc(sizeof(list_t));
    list_initialize(nodes_with_transition, list_noop_data_destructor);
 
    list_node_t* current;
-   list_traverse(nodes, current) {
-      node_t* node = (node_t*)current->data;
-      for (int i = 0; i < node->num_edges; i++) {
-         if (node->edges[i].value == symbol) {
-            list_push(nodes_with_transition, node);
-            break;
+   list_traverse(nfa_nodes, current) {
+      node_t* nfa_node = (node_t*)current->data;
+      printf("[compute_move_set] Node %d - num_edges: %d\n", nfa_node->id, nfa_node->num_edges);
+      for (int i = 0; i < nfa_node->num_edges; i++) {
+         if (nfa_node->edges[i].value == symbol) {
+            printf("[compute_move_set] Adding node %d - has transition on %c\n",
+                   nfa_node->edges[i].to->id, symbol);
+            list_push(nodes_with_transition, nfa_node->edges[i].to);
+            // break;
          }
       }
    }
