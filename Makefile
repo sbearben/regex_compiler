@@ -1,11 +1,18 @@
 CC = gcc
 CCFLAGS = -std=gnu99 -Wall
+INCLUDE = -I./
 OUTDIR = bin
 
-all: regex_nfa
+all: main
 
-regex_nfa: regex_nfa.c nfa.o list.o utils.o
-	$(CC) $(CCFLAGS) $^ -o ./$(OUTDIR)/$@ 
+main: main.c regex_nfa.o regex_dfa.o nfa.o list.o utils.o
+	$(CC) $(CCFLAGS) $(INCLUDE) $^ -o ./$(OUTDIR)/$@
+
+regex_dfa.o: regex_dfa.c
+	$(CC) $(CCFLAGS) $(INCLUDE) regex_dfa.c -o $@ -c
+
+regex_nfa.o: regex_nfa.c regex_nfa.h
+	$(CC) $(CCFLAGS) $(INCLUDE) regex_nfa.c -o $@ -c
 
 nfa.o: nfa.c nfa.h list.h
 	$(CC) $(CCFLAGS) nfa.c -o $@ -c

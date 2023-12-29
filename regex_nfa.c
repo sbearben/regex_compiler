@@ -12,13 +12,14 @@
  * 
 */
 
+#include "regex_nfa.h"
+
 #include <assert.h>
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "nfa.h"
 #include "utils.h"
 
 /**
@@ -31,28 +32,41 @@
  */
 
 // Holds the current input character for the parse
-char token;
+static char token;
 
 // Recursive descent functions
-nfa_t* regexp(void);
-nfa_t* concat(void);
-nfa_t* repetition(void);
-nfa_t* factor(void);
+static nfa_t* regexp(void);
+static nfa_t* concat(void);
+static nfa_t* repetition(void);
+static nfa_t* factor(void);
 
 // Constructors per parser grammar
-nfa_t* new_choice_nfa(nfa_t*, nfa_t*);
-nfa_t* new_concat_nfa(nfa_t*, nfa_t*);
-nfa_t* new_repetition_nfa(nfa_t*);
-nfa_t* new_literal_nfa(char);
+static nfa_t* new_choice_nfa(nfa_t*, nfa_t*);
+static nfa_t* new_concat_nfa(nfa_t*, nfa_t*);
+static nfa_t* new_repetition_nfa(nfa_t*);
+static nfa_t* new_literal_nfa(char);
 
-void match(char expectedToken) {
+nfa_t* regex_to_nfa() {
+   // load token with first character for lookahead
+   token = getchar();
+   nfa_t* result = regexp();
+
+   // newline signals successful parse
+   if (token != '\n') {
+      error();
+   }
+
+   return result;
+}
+
+static void match(char expectedToken) {
    if (token == expectedToken)
       token = getchar();
    else
       error();
 }
 
-nfa_t* regexp(void) {
+static nfa_t* regexp(void) {
    nfa_t* temp = concat();
    while (token == '|') {
       match('|');
@@ -61,7 +75,7 @@ nfa_t* regexp(void) {
    return temp;
 }
 
-nfa_t* concat(void) {
+static nfa_t* concat(void) {
    nfa_t* temp = repetition();
    while (isalnum(token) || token == '(') {
       // We don't match here since current token is part of first set of `factor`, so if we matched the conditions in factor will fail
@@ -70,7 +84,7 @@ nfa_t* concat(void) {
    return temp;
 }
 
-nfa_t* repetition(void) {
+static nfa_t* repetition(void) {
    nfa_t* temp = factor();
    if (token == '*') {
       match('*');
@@ -79,7 +93,7 @@ nfa_t* repetition(void) {
    return temp;
 }
 
-nfa_t* factor(void) {
+static nfa_t* factor(void) {
    nfa_t* temp = NULL;
    if (token == '(') {
       match('(');
@@ -95,7 +109,7 @@ nfa_t* factor(void) {
    return temp;
 }
 
-nfa_t* new_choice_nfa(nfa_t* left, nfa_t* right) {
+static nfa_t* new_choice_nfa(nfa_t* left, nfa_t* right) {
    nfa_t* nfa = new_nfa();
    nfa_consume_nodes(nfa, left);
    nfa_consume_nodes(nfa, right);
@@ -137,7 +151,7 @@ nfa_t* new_choice_nfa(nfa_t* left, nfa_t* right) {
    return nfa;
 }
 
-nfa_t* new_concat_nfa(nfa_t* left, nfa_t* right) {
+static nfa_t* new_concat_nfa(nfa_t* left, nfa_t* right) {
    nfa_t* nfa = new_nfa();
    nfa_consume_nodes(nfa, left);
    nfa_consume_nodes(nfa, right);
@@ -163,7 +177,7 @@ nfa_t* new_concat_nfa(nfa_t* left, nfa_t* right) {
    return nfa;
 }
 
-nfa_t* new_repetition_nfa(nfa_t* old_nfa) {
+static nfa_t* new_repetition_nfa(nfa_t* old_nfa) {
    nfa_t* nfa = new_nfa();
    nfa_consume_nodes(nfa, old_nfa);
 
@@ -199,7 +213,7 @@ nfa_t* new_repetition_nfa(nfa_t* old_nfa) {
    return nfa;
 }
 
-nfa_t* new_literal_nfa(char value) {
+static nfa_t* new_literal_nfa(char value) {
    nfa_t* nfa = new_nfa();
 
    // Create start and end nodes of literal nfa
@@ -215,24 +229,4 @@ nfa_t* new_literal_nfa(char value) {
    nfa_set_start_end(nfa, start_node, end_node);
 
    return nfa;
-}
-
-int main() {
-   // load token with first character for lookahead
-   token = getchar();
-   nfa_t* result = regexp();
-   // newline signals successful parse
-   if (token == '\n') {
-      log_nfa(result);
-      // char input[256];
-      // printf("Enter string to match: ");
-      // fgets(input, 256, stdin);
-   } else {
-      // extraneous chars on line
-      error();
-   }
-
-   free_nfa(result);
-
-   return 0;
 }
