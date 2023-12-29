@@ -73,7 +73,7 @@ void* list_find(list_t* list, void* data, int (*compare)(void*, void*)) {
 }
 
 bool list_contains(list_t* list, void* data, int (*compare)(void*, void*)) {
-   return list_find(list, data, compare) != NULL;
+   return list_find(list, data, compare) != NULL ? true : false;
 }
 
 // Sort the list using the given compare function
@@ -132,5 +132,6 @@ void list_for_each(list_t* list, void (*execute)(list_node_t*)) {
 
 static int default_comparator(void* data1, void* data2) {
    if (data1 == data2) return 0;
-   return data1 > data2;
+   if (data1 > data2) return 1;
+   return -1;
 }
