@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "list.h"
 #include "nfa.h"
@@ -18,7 +19,7 @@ struct dfa {
 struct dfa_node {
       char* id;
       bool is_accepting;
-      list_t* edges  // list of dfa_edge_t;
+      list_t* edges;  // list of dfa_edge_t;
 };
 
 struct dfa_edge {
@@ -37,7 +38,21 @@ dfa_t* new_dfa();
 
 static epsilon_closure_t* new_epsilon_closure();
 static epsilon_closure_t* compute_epsilon_closure(node_t* node);
+static epsilon_closure_t* compute_epsilon_closure_for_set(list_t* nfa_nodes);
 static void __compute_epsilon_closure(node_t* node, epsilon_closure_t* epsilon_closure);
+static void free_epsilon_closure(epsilon_closure_t* epsilon_closure);
+
+static dfa_t* dfa_from_nfa(nfa_t* nfa);
+static dfa_node_t* dfa_node_from_epsilon_closure(epsilon_closure_t* epsilon_closure);
+static void dfa_node_add_edge(dfa_node_t* dfa_node, char symbol, dfa_node_t* to);
+static char* create_id_for_set(list_t* nfa_nodes);
+static list_t* compute_transition_symbols(epsilon_closure_t* closure);
+static list_t* compute_move_set(list_t* nodes, char symbol);
+static epsilon_closure_t* find_unmarked_closure(list_t* eclosures);
+
+static int nfa_node_comparator(void* data1, void* data2);
+static int epsilon_closure_comparator(void* data1, void* data2);
+static int dfa_find_by_id_comparator(void* data1, void* data2);
 
 dfa_t* new_dfa() {
    dfa_t* dfa = (dfa_t*)xmalloc(sizeof(dfa_t));
@@ -139,7 +154,7 @@ static dfa_t* dfa_from_nfa(nfa_t* nfa) {
 
    dfa_node_t* current_dfa_node;
    epsilon_closure_t* current_closure;
-   while (current_closure = find_unmarked_closure(eclosures_stack)) {
+   while ((current_closure = find_unmarked_closure(eclosures_stack))) {
       current_closure->marked = true;
       current_dfa_node = list_find(dfa->__nodes, current_closure->id, dfa_find_by_id_comparator);
 
@@ -233,8 +248,9 @@ static list_t* compute_transition_symbols(epsilon_closure_t* closure) {
    list_traverse(closure->nodes, current) {
       node_t* node = (node_t*)current->data;
       for (int i = 0; i < node->num_edges; i++) {
-         if (!node->edges[i].is_epsilon && !list_contains(symbols, node->edges[i].value, NULL)) {
-            list_push(symbols, node->edges[i].value);
+         if (!node->edges[i].is_epsilon &&
+             !list_contains(symbols, (void*)node->edges[i].value, NULL)) {
+            list_push(symbols, (void*)node->edges[i].value);
          }
       }
    }
