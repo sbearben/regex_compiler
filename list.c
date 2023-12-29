@@ -4,10 +4,20 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+static int default_comparator(void* data1, void* data2);
+
 void list_initialize(list_t* list, void (*destructor)(list_node_t*)) {
    list->head = NULL;
    list->tail = NULL;
    list->destructor = destructor;
+}
+
+int list_size(list_t* list) {
+   int size = 0;
+   list_node_t* node;
+   list_traverse(list, node) { size++; }
+
+   return size;
 }
 
 void list_push(list_t* list, void* data) {
@@ -23,6 +33,19 @@ void list_push(list_t* list, void* data) {
    list->tail = node;
 }
 
+// void list_add_head(list_t* list, void* data) {
+//    list_node_t* node = (list_node_t*)malloc(sizeof(list_node_t));
+//    node->data = data;
+
+//    if (list->head == NULL) {
+//       list->tail = node;
+//       node->next = NULL;
+//    } else {
+//       node->next = list->head;
+//    }
+//    list->head = node;
+// }
+
 // Concat list2 onto list1 (TODO: maybe should copy list2 first)
 list_t* list_concat(list_t* list1, list_t* list2) {
    if (list1->head == NULL) {
@@ -36,14 +59,45 @@ list_t* list_concat(list_t* list1, list_t* list2) {
    return list1;
 }
 
-bool list_contains(list_t* list, void* data, int (*compare)(void*, void*)) {
-   list_node_t* node = list->head;
-   bool contains = false;
-   while (node != NULL && contains == false) {
-      contains = compare != NULL ? compare(node->data, data) == 0 : node->data == data;
-      node = node->next;
+void* list_find(list_t* list, void* data, int (*compare)(void*, void*)) {
+   int (*compare_func)(void*, void*) = compare != NULL ? compare : default_comparator;
+
+   list_node_t* node;
+   list_traverse(list, node) {
+      if (compare_func(node->data, data) == 0) {
+         return node->data;
+      }
    }
-   return contains;
+
+   return NULL;
+}
+
+bool list_contains(list_t* list, void* data, int (*compare)(void*, void*)) {
+   return list_find(list, data, compare) != NULL;
+}
+
+// Sort the list using the given compare function
+void list_sort(list_t* list, int (*compare)(void*, void*)) {
+   int (*compare_func)(void*, void*) = compare != NULL ? compare : default_comparator;
+   list_node_t* current = list->head;
+   list_node_t* next;
+   list_node_t* prev = NULL;
+
+   while (current != NULL) {
+      next = current->next;
+      while (next != NULL && compare_func(current->data, next->data) > 0) {
+         prev = next;
+         next = next->next;
+      }
+      if (prev != NULL) {
+         prev->next = current;
+      } else {
+         list->head = current;
+      }
+      current->next = next;
+      prev = current;
+      current = next;
+   }
 }
 
 // Deallocate the list using the defined destructor (or free if not defined)
@@ -74,4 +128,9 @@ void list_for_each(list_t* list, void (*execute)(list_node_t*)) {
       execute(current);
       current = next;
    }
+}
+
+static int default_comparator(void* data1, void* data2) {
+   if (data1 == data2) return 0;
+   return data1 > data2;
 }
