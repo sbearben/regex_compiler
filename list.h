@@ -27,6 +27,5 @@ void list_sort(list_t* list, int (*compare)(void*, void*));
 void list_release(list_t* list);
 void list_default_destructor(list_node_t*);
 void list_noop_data_destructor(list_node_t* node);
-void list_for_each(list_t* list, void (*execute)(list_node_t*));
 
 #endif  // LIST_H

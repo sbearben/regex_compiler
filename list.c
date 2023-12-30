@@ -105,7 +105,17 @@ void list_release(list_t* list) {
    if (!list) {
       return;
    }
-   list_for_each(list, list->destructor ? list->destructor : list_default_destructor);
+
+   void (*destructor)(list_node_t*) = list->destructor ? list->destructor : list_default_destructor;
+   list_node_t* current = list->head;
+   list_node_t* next;
+
+   while (current != NULL) {
+      next = current->next;
+      destructor(current);
+      current = next;
+   }
+
    free(list);
 }
 
@@ -117,18 +127,6 @@ void list_default_destructor(list_node_t* node) {
 
 // Destructor for list nodes that frees the node only but not the data
 void list_noop_data_destructor(list_node_t* node) { free(node); }
-
-// Traverse each node in the list
-void list_for_each(list_t* list, void (*execute)(list_node_t*)) {
-   list_node_t* current = list->head;
-   list_node_t* next;
-
-   while (current != NULL) {
-      next = current->next;
-      execute(current);
-      current = next;
-   }
-}
 
 static int default_comparator(void* data1, void* data2) {
    if (data1 == data2) return 0;
