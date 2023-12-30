@@ -29,14 +29,19 @@
  * - Add support for escape sequences
  */
 
-// Holds the current input character for the parse
-static char token;
+typedef struct state {
+      const char* pattern;
+      char* current;
+} state_t;
+
+static char peek(state_t*);
+static void match(state_t*, char);
 
 // Recursive descent functions
-static nfa_t* regexp(void);
-static nfa_t* concat(void);
-static nfa_t* repetition(void);
-static nfa_t* factor(void);
+static nfa_t* regexp(state_t*);
+static nfa_t* concat(state_t*);
+static nfa_t* repetition(state_t*);
+static nfa_t* factor(state_t*);
 
 // Constructors per parser grammar
 static nfa_t* new_choice_nfa(nfa_t*, nfa_t*);
@@ -44,62 +49,65 @@ static nfa_t* new_concat_nfa(nfa_t*, nfa_t*);
 static nfa_t* new_repetition_nfa(nfa_t*);
 static nfa_t* new_literal_nfa(char);
 
-nfa_t* parse_regex_to_nfa() {
-   // load token with first character for lookahead
-   token = getchar();
-   nfa_t* result = regexp();
+nfa_t* parse_regex_to_nfa(char* pattern) {
+   state_t state = {
+       .pattern = pattern,
+       .current = pattern,
+   };
+   nfa_t* result = regexp(&state);
 
-   // newline signals successful parse
-   if (token != '\n') {
+   if (peek(&state) != '\0') {
       error();
    }
 
    return result;
 }
 
-static void match(char expectedToken) {
-   if (token == expectedToken)
-      token = getchar();
+static char peek(state_t* state) { return *state->current; }
+
+static void match(state_t* state, char expectedToken) {
+   if (peek(state) == expectedToken)
+      state->current++;
    else
       error();
 }
 
-static nfa_t* regexp(void) {
-   nfa_t* temp = concat();
-   while (token == '|') {
-      match('|');
-      temp = new_choice_nfa(temp, concat());
+static nfa_t* regexp(state_t* state) {
+   nfa_t* temp = concat(state);
+   while (peek(state) == '|') {
+      match(state, '|');
+      temp = new_choice_nfa(temp, concat(state));
    }
    return temp;
 }
 
-static nfa_t* concat(void) {
-   nfa_t* temp = repetition();
-   while (isalnum(token) || token == '(') {
+static nfa_t* concat(state_t* state) {
+   nfa_t* temp = repetition(state);
+   while (isalnum(peek(state)) || peek(state) == '(') {
       // We don't match here since current token is part of first set of `factor`, so if we matched the conditions in factor will fail
-      temp = new_concat_nfa(temp, repetition());
+      temp = new_concat_nfa(temp, repetition(state));
    }
    return temp;
 }
 
-static nfa_t* repetition(void) {
-   nfa_t* temp = factor();
-   if (token == '*') {
-      match('*');
+static nfa_t* repetition(state_t* state) {
+   nfa_t* temp = factor(state);
+   if (peek(state) == '*') {
+      match(state, '*');
       temp = new_repetition_nfa(temp);
    }
    return temp;
 }
 
-static nfa_t* factor(void) {
+static nfa_t* factor(state_t* state) {
    nfa_t* temp = NULL;
-   if (token == '(') {
-      match('(');
-      temp = regexp();
-      match(')');
-   } else if (isalnum(token)) {
-      char value = token;
-      match(token);
+   if (peek(state) == '(') {
+      match(state, '(');
+      temp = regexp(state);
+      match(state, ')');
+   } else if (isalnum(peek(state))) {
+      char value = peek(state);
+      match(state, value);
       temp = new_literal_nfa(value);
    } else {
       error();

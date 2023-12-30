@@ -38,7 +38,7 @@ void regex_release(regex_t* regex) {
 }
 
 static dfa_t* regex_parse(char* pattern) {
-   nfa_t* nfa = parse_regex_to_nfa();
+   nfa_t* nfa = parse_regex_to_nfa(pattern);
    // log_nfa(nfa);
    // printf("\n");
 

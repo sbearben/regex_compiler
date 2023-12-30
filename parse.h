@@ -3,7 +3,7 @@
 
 #include "nfa.h"
 
-// Reads from stdin and returns an NFA.
-nfa_t* parse_regex_to_nfa();
+// Parse null-terminated regex string into an NFA.
+nfa_t* parse_regex_to_nfa(char*);
 
 #endif  // PARSE_H
