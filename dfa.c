@@ -15,7 +15,6 @@
  * In terms of nfa_nodes, the nfa is the owner of all nodes (an eclosure never does).
  */
 
-// TODO: can we get rid of this intermediate struct?
 typedef struct epsilon_closure {
       char* id;
       list_t* nodes;  // list of nfa_node_t
@@ -72,8 +71,6 @@ dfa_t* dfa_from_nfa(nfa_t* nfa) {
       list_node_t* current_symbol_node;
       list_traverse(transitions, current_symbol_node) {
          char transition_symbol = (char)current_symbol_node->data;
-         printf("[dfa_from_nfa] current_dfa_node %s - transition_symbol: %c\n",
-                current_dfa_node->id, transition_symbol);
 
          // Get/create dfa_node and add edge from current_dfa_node to next_dfa_node
          list_t* move_result = compute_move_set(current_closure->nodes, transition_symbol);
@@ -89,8 +86,6 @@ dfa_t* dfa_from_nfa(nfa_t* nfa) {
             list_push(dfa->__nodes, next_dfa_node);
          }
          dfa_node_add_edge(current_dfa_node, transition_symbol, next_dfa_node);
-
-         printf("[dfa_from_nfa] Next closure: %s\n\n", next_dfa_node->id);
 
          free(next_dfa_node_id);
          list_release(move_result);
@@ -134,7 +129,6 @@ static epsilon_closure_t* new_epsilon_closure() {
 
 static epsilon_closure_t* compute_epsilon_closure(nfa_node_t* nfa_node) {
    epsilon_closure_t* epsilon_closure = new_epsilon_closure();
-   // Make copy of node->id
    epsilon_closure->id = (char*)xmalloc(sizeof(char) * num_places(nfa_node->id) + 1);
    sprintf(epsilon_closure->id, "%d", nfa_node->id);
 
@@ -146,7 +140,6 @@ static epsilon_closure_t* compute_epsilon_closure(nfa_node_t* nfa_node) {
 static epsilon_closure_t* compute_epsilon_closure_for_set(list_t* nfa_nodes, char* id) {
    // Implementation would be a lot nicer with a proper set data structure
    epsilon_closure_t* set_eclosure = new_epsilon_closure();
-   // Make copy of id and set on set_eclosure->id
    set_eclosure->id = (char*)xmalloc(sizeof(char) * strlen(id) + 1);
    strcpy(set_eclosure->id, id);
 
@@ -215,7 +208,6 @@ static void dfa_node_add_edge(dfa_node_t* dfa_node, char symbol, dfa_node_t* to)
    list_push(dfa_node->edges, edge);
 }
 
-// Allocates a string that needs to be released
 static char* create_id_for_set(list_t* nfa_nodes) {
    list_sort(nfa_nodes, nfa_node_comparator);
 
@@ -235,7 +227,6 @@ static char* create_id_for_set(list_t* nfa_nodes) {
    return id;
 }
 
-// Allocates a list_t* with nodes that need to be released
 static list_t* compute_transition_symbols(epsilon_closure_t* closure) {
    list_t* symbols = (list_t*)malloc(sizeof(list_t));
    list_initialize(symbols, list_noop_data_destructor);
@@ -254,7 +245,6 @@ static list_t* compute_transition_symbols(epsilon_closure_t* closure) {
    return symbols;
 }
 
-// Allocates a list_t* with nodes that need to be released
 static list_t* compute_move_set(list_t* nfa_nodes, char symbol) {
    list_t* nfa_nodes_with_transition = (list_t*)malloc(sizeof(list_t));
    list_initialize(nfa_nodes_with_transition, list_noop_data_destructor);
@@ -262,11 +252,9 @@ static list_t* compute_move_set(list_t* nfa_nodes, char symbol) {
    list_node_t* current;
    list_traverse(nfa_nodes, current) {
       nfa_node_t* nfa_node = (nfa_node_t*)current->data;
-      printf("[compute_move_set] Node %d - num_edges: %d\n", nfa_node->id, nfa_node->num_edges);
+
       for (int i = 0; i < nfa_node->num_edges; i++) {
          if (nfa_node->edges[i].value == symbol) {
-            printf("[compute_move_set] Adding node %d - has transition on %c\n",
-                   nfa_node->edges[i].to->id, symbol);
             list_push(nfa_nodes_with_transition, nfa_node->edges[i].to);
          }
       }
