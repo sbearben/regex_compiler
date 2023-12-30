@@ -41,13 +41,18 @@ bool dfa_accepts(dfa_t* dfa, char* str, int len) {
    dfa_node_t* current = dfa->start;
 
    for (int i = 0; i < len; i++) {
+      bool found_transition = false;
       list_node_t* current_edge;
       list_traverse(current->edges, current_edge) {
          dfa_edge_t* edge = (dfa_edge_t*)current_edge->data;
          if (edge->value == str[i]) {
+            found_transition = true;
             current = edge->to;
             break;
          }
+      }
+      if (!found_transition) {
+         return false;
       }
    }
 

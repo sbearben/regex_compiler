@@ -40,6 +40,8 @@ struct regex {
 // Holds the current input character for the parse
 static char token;
 
+static dfa_t* regex_parse(char*);
+
 // Recursive descent functions
 static nfa_t* regexp(void);
 static nfa_t* concat(void);
@@ -65,7 +67,7 @@ bool regex_accepts(regex_t* regex, char* input) {
    return dfa_accepts(regex->dfa, input, strlen(input));
 }
 
-void free_regex(regex_t* regex) {
+void regex_release(regex_t* regex) {
    free(regex->pattern);
    free_dfa(regex->dfa);
    free(regex);
@@ -86,7 +88,8 @@ static dfa_t* regex_parse(char* pattern) {
 
    dfa_t* dfa = dfa_from_nfa(nfa);
    free_nfa(nfa);
-   // log_dfa(dfa);
+
+   log_dfa(dfa);
 
    return dfa;
 }
