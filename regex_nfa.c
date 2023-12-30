@@ -19,8 +19,14 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "utils.h"
+
+struct regex {
+      char* pattern;
+      dfa_t* dfa;
+};
 
 /**
  * Improvement ideas:
@@ -46,17 +52,43 @@ static nfa_t* new_concat_nfa(nfa_t*, nfa_t*);
 static nfa_t* new_repetition_nfa(nfa_t*);
 static nfa_t* new_literal_nfa(char);
 
-nfa_t* regex_to_nfa() {
+regex_t* new_regex(char* pattern) {
+   regex_t* regex = (regex_t*)xmalloc(sizeof(regex_t));
+   regex->pattern = (char*)xmalloc(strlen(pattern) + 1);
+   strcpy(regex->pattern, pattern);
+   regex->dfa = regex_parse(pattern);
+
+   return regex;
+}
+
+bool regex_accepts(regex_t* regex, char* input) {
+   return dfa_accepts(regex->dfa, input, strlen(input));
+}
+
+void free_regex(regex_t* regex) {
+   free(regex->pattern);
+   free_dfa(regex->dfa);
+   free(regex);
+}
+
+static dfa_t* regex_parse(char* pattern) {
    // load token with first character for lookahead
    token = getchar();
-   nfa_t* result = regexp();
+   nfa_t* nfa = regexp();
 
    // newline signals successful parse
    if (token != '\n') {
       error();
    }
 
-   return result;
+   // log_nfa(nfa);
+   // printf("\n");
+
+   dfa_t* dfa = dfa_from_nfa(nfa);
+   free_nfa(nfa);
+   // log_dfa(dfa);
+
+   return dfa;
 }
 
 static void match(char expectedToken) {
