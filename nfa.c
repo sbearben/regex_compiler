@@ -7,10 +7,9 @@
 
 static int node_id = 0;
 
-static void nodes_traverse(nfa_node_t* node, on_node_f, on_edge_f, list_t* seen_nodes);
+static void nodes_traverse(nfa_node_t* node, on_node_f, list_t* seen_nodes);
 static void free_list_node(list_node_t* list_node);
 static void log_node(nfa_node_t* node);
-static void log_edge(nfa_edge_t* edge);
 
 static void* xmalloc(size_t size) {
    void* ptr = malloc(size);
@@ -99,17 +98,16 @@ void free_nfa(nfa_t* nfa) {
    free(nfa);
 }
 
-void nfa_traverse(nfa_t* nfa, on_node_f on_node, on_edge_f on_edge) {
+void nfa_traverse(nfa_t* nfa, on_node_f on_node) {
    list_t* seen_nodes = (list_t*)malloc(sizeof(list_t));
    list_initialize(seen_nodes, list_noop_data_destructor);
 
-   nodes_traverse(nfa->start, on_node, on_edge, seen_nodes);
+   nodes_traverse(nfa->start, on_node, seen_nodes);
 
    list_release(seen_nodes);
 }
 
-static void nodes_traverse(nfa_node_t* node, on_node_f on_node, on_edge_f on_edge,
-                           list_t* seen_nodes) {
+static void nodes_traverse(nfa_node_t* node, on_node_f on_node, list_t* seen_nodes) {
    if (list_contains(seen_nodes, node, NULL)) {
       return;
    }
@@ -119,10 +117,7 @@ static void nodes_traverse(nfa_node_t* node, on_node_f on_node, on_edge_f on_edg
    }
 
    for (int i = 0; i < node->num_edges; i++) {
-      if (on_edge != NULL) {
-         on_edge(&node->edges[i]);
-      }
-      nodes_traverse(node->edges[i].to, on_node, on_edge, seen_nodes);
+      nodes_traverse(node->edges[i].to, on_node, seen_nodes);
    }
 }
 
@@ -137,10 +132,9 @@ static void free_list_node(list_node_t* list_node) {
    free(list_node);
 }
 
-// Traverse nfa and log node/edge info
 void log_nfa(nfa_t* nfa) {
    printf("NFA:\n");
-   nfa_traverse(nfa, log_node, NULL);
+   nfa_traverse(nfa, log_node);
 }
 
 static void log_node(nfa_node_t* node) {
@@ -148,15 +142,12 @@ static void log_node(nfa_node_t* node) {
           node->is_accepting ? "accepting" : "not accepting");
    for (int i = 0; i < node->num_edges; i++) {
       printf("    ");
-      log_edge(&node->edges[i]);
-   }
-}
-
-static void log_edge(nfa_edge_t* edge) {
-   int to_id = edge->to != NULL ? edge->to->id : -1;
-   if (edge->is_epsilon) {
-      printf("Edge: epsilon, to: %d\n", to_id);
-   } else {
-      printf("Edge: %c, to: %d\n", edge->value, to_id);
+      nfa_edge_t* edge = &node->edges[i];
+      int to_id = edge->to != NULL ? edge->to->id : -1;
+      if (edge->is_epsilon) {
+         printf("Edge: epsilon, to: %d\n", to_id);
+      } else {
+         printf("Edge: %c, to: %d\n", edge->value, to_id);
+      }
    }
 }

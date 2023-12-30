@@ -41,8 +41,7 @@ void free_nfa(nfa_t*);
 
 // Traversal
 typedef void (*on_node_f)(nfa_node_t*);
-typedef void (*on_edge_f)(nfa_edge_t*);
-void nfa_traverse(nfa_t*, on_node_f, on_edge_f);
+void nfa_traverse(nfa_t*, on_node_f);
 
 // Logging
 void log_nfa(nfa_t*);
