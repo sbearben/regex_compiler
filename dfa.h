@@ -16,7 +16,7 @@ struct dfa {
 struct dfa_node {
       char* id;
       bool is_accepting;
-      list_t* edges;  // list of dfa_edge_t;
+      list_t* edges;
 };
 
 struct dfa_edge {
@@ -25,6 +25,7 @@ struct dfa_edge {
 };
 
 dfa_t* dfa_from_nfa(nfa_t* nfa);
+void free_dfa(dfa_t* dfa);
 void log_dfa(dfa_t* dfa);
 
 #endif  // DFA_H

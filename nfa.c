@@ -128,11 +128,11 @@ static void nodes_traverse(nfa_node_t* node, on_node_f on_node, on_edge_f on_edg
 
 static void free_list_node(list_node_t* list_node) {
    nfa_node_t* node = (nfa_node_t*)list_node->data;
-   printf("freeing node %d\n", node->id);
+   // printf("freeing node %d\n", node->id);
    if (node->edges != NULL) {
       free(node->edges);
    }
-   printf("freed node\n");
+   // printf("freed node\n");
    free(node);
    free(list_node);
 }

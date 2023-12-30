@@ -12,8 +12,8 @@ int main() {
    dfa_t* dfa = dfa_from_nfa(nfa);
    log_dfa(dfa);
 
-   // free_dfa(dfa);
    free_nfa(nfa);
+   free_dfa(dfa);
 
    return 0;
 }

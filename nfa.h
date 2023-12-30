@@ -16,8 +16,7 @@ struct nfa {
 struct nfa_node {
       int id;
       bool is_accepting;
-      // Array of edges connected to other nodes (might be better as a linked list)
-      nfa_edge_t* edges;
+      nfa_edge_t* edges;  // (might be better as a linked list)
       int num_edges;
 };
 
