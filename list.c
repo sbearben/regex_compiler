@@ -35,6 +35,20 @@ void list_push(list_t* list, void* data) {
    list->tail = node;
 }
 
+void* list_deque(list_t* list) {
+   list_node_t* node = list->head;
+   void* data = node->data;
+
+   if (node == NULL) {
+      return NULL;
+   }
+
+   list->head = node->next;
+   free(node);
+
+   return data;
+}
+
 // void list_add_head(list_t* list, void* data) {
 //    list_node_t* node = (list_node_t*)malloc(sizeof(list_node_t));
 //    node->data = data;
