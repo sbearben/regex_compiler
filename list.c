@@ -20,6 +20,8 @@ int list_size(list_t* list) {
    return size;
 }
 
+bool list_empty(list_t* list) { return list->head == NULL; }
+
 void list_push(list_t* list, void* data) {
    list_node_t* node = (list_node_t*)malloc(sizeof(list_node_t));
    node->data = data;
