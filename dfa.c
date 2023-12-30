@@ -19,12 +19,11 @@
 typedef struct epsilon_closure {
       char* id;
       list_t* nodes;  // list of nfa_node_t
-      bool marked;
 } epsilon_closure_t;
 
 static epsilon_closure_t* new_epsilon_closure();
 static epsilon_closure_t* compute_epsilon_closure(nfa_node_t*);
-static epsilon_closure_t* compute_epsilon_closure_for_set(list_t*);
+static epsilon_closure_t* compute_epsilon_closure_for_set(list_t*, char*);
 static void __compute_epsilon_closure(nfa_node_t*, epsilon_closure_t*);
 
 static dfa_node_t* dfa_node_from_epsilon_closure(epsilon_closure_t*);
@@ -33,14 +32,12 @@ static void dfa_node_add_edge(dfa_node_t*, char, dfa_node_t*);
 static char* create_id_for_set(list_t*);
 static list_t* compute_transition_symbols(epsilon_closure_t*);
 static list_t* compute_move_set(list_t*, char);
-static epsilon_closure_t* find_unmarked_closure(list_t*);
 
 static void free_dfa_list_node(list_node_t*);
 static void free_epsilon_closure_list_node(list_node_t*);
 static void free_epsilon_closure(epsilon_closure_t*);
 
 static int nfa_node_comparator(void*, void*);
-static int epsilon_closure_comparator(void*, void*);
 static int dfa_find_by_id_comparator(void*, void*);
 
 dfa_t* dfa_from_nfa(nfa_t* nfa) {
@@ -65,8 +62,8 @@ dfa_t* dfa_from_nfa(nfa_t* nfa) {
 
    dfa_node_t* current_dfa_node;
    epsilon_closure_t* current_closure;
-   while ((current_closure = find_unmarked_closure(eclosures_stack))) {
-      current_closure->marked = true;
+   while (!list_empty(eclosures_stack)) {
+      current_closure = (epsilon_closure_t*)list_deque(eclosures_stack);
       current_dfa_node = dfa_find_node(dfa, current_closure->id);
       assert(current_dfa_node != NULL);
 
@@ -78,24 +75,24 @@ dfa_t* dfa_from_nfa(nfa_t* nfa) {
          printf("[dfa_from_nfa] current_dfa_node %s - transition_symbol: %c\n",
                 current_dfa_node->id, transition_symbol);
 
+         // Get/create dfa_node and add edge from current_dfa_node to next_dfa_node
          list_t* move_result = compute_move_set(current_closure->nodes, transition_symbol);
-         epsilon_closure_t* next_closure = compute_epsilon_closure_for_set(move_result);
+         char* next_dfa_node_id = create_id_for_set(move_result);
+         dfa_node_t* next_dfa_node = dfa_find_node(dfa, next_dfa_node_id);
 
-         printf("[dfa_from_nfa] Next closure: %s\n\n", next_closure->id);
-
-         if (!list_contains(eclosures_stack, next_closure, epsilon_closure_comparator)) {
-            next_closure->marked = false;
-            list_push(eclosures_stack, next_closure);
-         }
-
-         // Get/create dfa_node for next_closure and add edge from current_dfa_node to next_dfa_node
-         dfa_node_t* next_dfa_node = dfa_find_node(dfa, next_closure->id);
          if (next_dfa_node == NULL) {
+            epsilon_closure_t* next_closure =
+                compute_epsilon_closure_for_set(move_result, next_dfa_node_id);
+            list_push(eclosures_stack, next_closure);
+
             next_dfa_node = dfa_node_from_epsilon_closure(next_closure);
             list_push(dfa->__nodes, next_dfa_node);
          }
          dfa_node_add_edge(current_dfa_node, transition_symbol, next_dfa_node);
 
+         printf("[dfa_from_nfa] Next closure: %s\n\n", next_dfa_node->id);
+
+         free(next_dfa_node_id);
          list_release(move_result);
       };
 
@@ -128,7 +125,6 @@ void log_dfa(dfa_t* dfa) {
 static epsilon_closure_t* new_epsilon_closure() {
    epsilon_closure_t* epsilon_closure = (epsilon_closure_t*)xmalloc(sizeof(epsilon_closure_t));
    epsilon_closure->id = NULL;
-   epsilon_closure->marked = false;
 
    epsilon_closure->nodes = (list_t*)malloc(sizeof(list_t));
    list_initialize(epsilon_closure->nodes, list_noop_data_destructor);
@@ -147,10 +143,12 @@ static epsilon_closure_t* compute_epsilon_closure(nfa_node_t* nfa_node) {
    return epsilon_closure;
 }
 
-static epsilon_closure_t* compute_epsilon_closure_for_set(list_t* nfa_nodes) {
+static epsilon_closure_t* compute_epsilon_closure_for_set(list_t* nfa_nodes, char* id) {
    // Implementation would be a lot nicer with a proper set data structure
    epsilon_closure_t* set_eclosure = new_epsilon_closure();
-   set_eclosure->id = create_id_for_set(nfa_nodes);
+   // Make copy of id and set on set_eclosure->id
+   set_eclosure->id = (char*)xmalloc(sizeof(char) * strlen(id) + 1);
+   strcpy(set_eclosure->id, id);
 
    list_node_t* current_nfa;
    list_traverse(nfa_nodes, current_nfa) {
@@ -277,18 +275,6 @@ static list_t* compute_move_set(list_t* nfa_nodes, char symbol) {
    return nfa_nodes_with_transition;
 }
 
-static epsilon_closure_t* find_unmarked_closure(list_t* eclosures) {
-   list_node_t* current;
-   list_traverse(eclosures, current) {
-      epsilon_closure_t* ec = (epsilon_closure_t*)current->data;
-      if (!ec->marked) {
-         return ec;
-      }
-   }
-
-   return NULL;
-}
-
 /**
  * Destructors
  */
@@ -324,10 +310,6 @@ static void free_epsilon_closure(epsilon_closure_t* epsilon_closure) {
 
 static int nfa_node_comparator(void* data1, void* data2) {
    return ((nfa_node_t*)data1)->id - ((nfa_node_t*)data2)->id;
-}
-
-static int epsilon_closure_comparator(void* data1, void* data2) {
-   return strcmp(((epsilon_closure_t*)data1)->id, ((epsilon_closure_t*)data2)->id);
 }
 
 static int dfa_find_by_id_comparator(void* data1, void* data2) {
