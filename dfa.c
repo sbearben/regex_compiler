@@ -22,6 +22,7 @@ static epsilon_closure_t* compute_epsilon_closure_for_set(list_t*);
 static void __compute_epsilon_closure(nfa_node_t*, epsilon_closure_t*);
 
 static dfa_node_t* dfa_node_from_epsilon_closure(epsilon_closure_t*);
+static dfa_node_t* dfa_find_node(dfa_t*, char*);
 static void dfa_node_add_edge(dfa_node_t*, char, dfa_node_t*);
 static char* create_id_for_set(list_t*);
 static list_t* compute_transition_symbols(epsilon_closure_t*);
@@ -60,7 +61,7 @@ dfa_t* dfa_from_nfa(nfa_t* nfa) {
    epsilon_closure_t* current_closure;
    while ((current_closure = find_unmarked_closure(eclosures_stack))) {
       current_closure->marked = true;
-      current_dfa_node = list_find(dfa->__nodes, current_closure->id, dfa_find_by_id_comparator);
+      current_dfa_node = dfa_find_node(dfa, current_closure->id);
 
       list_t* transitions = compute_transition_symbols(current_closure);
 
@@ -81,8 +82,7 @@ dfa_t* dfa_from_nfa(nfa_t* nfa) {
          }
 
          // Get/create dfa_node for next_closure and add edge from current_dfa_node to next_dfa_node
-         dfa_node_t* next_dfa_node =
-             list_find(dfa->__nodes, next_closure->id, dfa_find_by_id_comparator);
+         dfa_node_t* next_dfa_node = dfa_find_node(dfa, next_closure->id);
          if (next_dfa_node == NULL) {
             next_dfa_node = dfa_node_from_epsilon_closure(next_closure);
             list_push(dfa->__nodes, next_dfa_node);
@@ -198,7 +198,11 @@ dfa_node_t* dfa_node_from_epsilon_closure(epsilon_closure_t* epsilon_closure) {
    return dfa_node;
 }
 
-void dfa_node_add_edge(dfa_node_t* dfa_node, char symbol, dfa_node_t* to) {
+static dfa_node_t* dfa_find_node(dfa_t* dfa, char* id) {
+   return list_find(dfa->__nodes, id, dfa_find_by_id_comparator);
+}
+
+static void dfa_node_add_edge(dfa_node_t* dfa_node, char symbol, dfa_node_t* to) {
    dfa_edge_t* edge = (dfa_edge_t*)xmalloc(sizeof(dfa_edge_t));
    edge->value = symbol;
    edge->to = to;
@@ -210,6 +214,7 @@ void dfa_node_add_edge(dfa_node_t* dfa_node, char symbol, dfa_node_t* to) {
 static char* create_id_for_set(list_t* nfa_nodes) {
    list_sort(nfa_nodes, nfa_node_comparator);
 
+   // TODO: Could figure out number to allocate by traversing and summing num_places
    char* id = (char*)malloc(sizeof(char) * 256);
    id[0] = '\0';
 
@@ -246,8 +251,8 @@ static list_t* compute_transition_symbols(epsilon_closure_t* closure) {
 
 // Allocates a list_t* with nodes that need to be released
 static list_t* compute_move_set(list_t* nfa_nodes, char symbol) {
-   list_t* nodes_with_transition = (list_t*)malloc(sizeof(list_t));
-   list_initialize(nodes_with_transition, list_noop_data_destructor);
+   list_t* nfa_nodes_with_transition = (list_t*)malloc(sizeof(list_t));
+   list_initialize(nfa_nodes_with_transition, list_noop_data_destructor);
 
    list_node_t* current;
    list_traverse(nfa_nodes, current) {
@@ -257,12 +262,12 @@ static list_t* compute_move_set(list_t* nfa_nodes, char symbol) {
          if (nfa_node->edges[i].value == symbol) {
             printf("[compute_move_set] Adding node %d - has transition on %c\n",
                    nfa_node->edges[i].to->id, symbol);
-            list_push(nodes_with_transition, nfa_node->edges[i].to);
+            list_push(nfa_nodes_with_transition, nfa_node->edges[i].to);
          }
       }
    }
 
-   return nodes_with_transition;
+   return nfa_nodes_with_transition;
 }
 
 static epsilon_closure_t* find_unmarked_closure(list_t* eclosures) {
