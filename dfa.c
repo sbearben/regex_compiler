@@ -6,8 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "list.h"
-#include "nfa.h"
 #include "utils.h"
 
 /**

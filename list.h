@@ -24,7 +24,6 @@ int list_size(list_t* list);
 bool list_empty(list_t* list);
 void list_push(list_t* list, void* data);
 void* list_deque(list_t* list);
-// void list_add_head(list_t* list, void* data);
 list_t* list_concat(list_t* list1, list_t* list2);
 void* list_find(list_t* list, void* data, int (*compare)(void*, void*));
 bool list_contains(list_t* list, void* data, int (*compare)(void*, void*));

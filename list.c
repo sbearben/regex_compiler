@@ -49,19 +49,6 @@ void* list_deque(list_t* list) {
    return data;
 }
 
-// void list_add_head(list_t* list, void* data) {
-//    list_node_t* node = (list_node_t*)malloc(sizeof(list_node_t));
-//    node->data = data;
-
-//    if (list->head == NULL) {
-//       list->tail = node;
-//       node->next = NULL;
-//    } else {
-//       node->next = list->head;
-//    }
-//    list->head = node;
-// }
-
 // Concat list2 onto list1 (TODO: maybe should copy list2 first)
 list_t* list_concat(list_t* list1, list_t* list2) {
    if (list1->head == NULL) {

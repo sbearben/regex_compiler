@@ -8,11 +8,11 @@ all: main
 main: main.c regex_nfa.o dfa.o nfa.o list.o utils.o
 	$(CC) $(CCFLAGS) $(INCLUDE) $^ -o ./$(OUTDIR)/$@
 
-dfa.o: dfa.c
-	$(CC) $(CCFLAGS) $(INCLUDE) dfa.c -o $@ -c
-
 regex_nfa.o: regex_nfa.c regex_nfa.h
 	$(CC) $(CCFLAGS) $(INCLUDE) regex_nfa.c -o $@ -c
+
+dfa.o: dfa.c
+	$(CC) $(CCFLAGS) $(INCLUDE) dfa.c -o $@ -c
 
 nfa.o: nfa.c nfa.h list.h
 	$(CC) $(CCFLAGS) nfa.c -o $@ -c
