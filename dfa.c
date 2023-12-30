@@ -1,5 +1,6 @@
 #include "dfa.h"
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,6 +9,11 @@
 #include "list.h"
 #include "nfa.h"
 #include "utils.h"
+
+/**
+ * Note: Any list that holds a copy of a pointer uses list_noop_data_destructor as the destructor.
+ * In terms of nfa_nodes, the nfa is the owner of all nodes (an eclosure never does).
+ */
 
 // TODO: can we get rid of this intermediate struct?
 typedef struct epsilon_closure {
@@ -30,6 +36,7 @@ static list_t* compute_move_set(list_t*, char);
 static epsilon_closure_t* find_unmarked_closure(list_t*);
 
 static void free_dfa_list_node(list_node_t*);
+static void free_epsilon_closure_list_node(list_node_t*);
 static void free_epsilon_closure(epsilon_closure_t*);
 
 static int nfa_node_comparator(void*, void*);
@@ -48,8 +55,7 @@ dfa_t* dfa_from_nfa(nfa_t* nfa) {
 
    // Create a stack of eclosures to process
    list_t* eclosures_stack = (list_t*)malloc(sizeof(list_t));
-   // TODO: destructor
-   list_initialize(eclosures_stack, NULL);
+   list_initialize(eclosures_stack, free_epsilon_closure_list_node);
    list_push(eclosures_stack, initial_closure);
 
    // Create initial dfa_node from initial eclosure and add to dfa
@@ -62,6 +68,7 @@ dfa_t* dfa_from_nfa(nfa_t* nfa) {
    while ((current_closure = find_unmarked_closure(eclosures_stack))) {
       current_closure->marked = true;
       current_dfa_node = dfa_find_node(dfa, current_closure->id);
+      assert(current_dfa_node != NULL);
 
       list_t* transitions = compute_transition_symbols(current_closure);
 
@@ -154,7 +161,7 @@ static epsilon_closure_t* compute_epsilon_closure_for_set(list_t* nfa_nodes) {
          if (!list_contains(set_eclosure->nodes, current_closure_nfa_node->data, NULL)) {
             list_push(set_eclosure->nodes, current_closure_nfa_node->data);
          }
-         // TODO: this doesn't seem great
+         // TODO: this doesn't seem great, do we need this?
          current_closure_nfa_node->data = NULL;
       }
       free_epsilon_closure(node_closure);
@@ -297,6 +304,11 @@ static void free_dfa_list_node(list_node_t* list_node) {
    list_release(node->edges);
 
    free(node);
+   free(list_node);
+}
+
+static void free_epsilon_closure_list_node(list_node_t* list_node) {
+   free_epsilon_closure((epsilon_closure_t*)list_node->data);
    free(list_node);
 }
 
