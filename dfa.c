@@ -37,6 +37,23 @@ static void free_epsilon_closure(epsilon_closure_t*);
 static int nfa_node_comparator(void*, void*);
 static int dfa_find_by_id_comparator(void*, void*);
 
+bool dfa_accepts(dfa_t* dfa, char* str, int len) {
+   dfa_node_t* current = dfa->start;
+
+   for (int i = 0; i < len; i++) {
+      list_node_t* current_edge;
+      list_traverse(current->edges, current_edge) {
+         dfa_edge_t* edge = (dfa_edge_t*)current_edge->data;
+         if (edge->value == str[i]) {
+            current = edge->to;
+            break;
+         }
+      }
+   }
+
+   return current->is_accepting;
+}
+
 dfa_t* dfa_from_nfa(nfa_t* nfa) {
    // Create dfa
    dfa_t* dfa = (dfa_t*)xmalloc(sizeof(dfa_t));
@@ -98,8 +115,7 @@ dfa_t* dfa_from_nfa(nfa_t* nfa) {
 }
 
 void log_dfa(dfa_t* dfa) {
-   printf("DFA:\n");
-   printf("  Start: %s\n", dfa->start->id);
+   printf("DFA (start - %s):\n", dfa->start->id);
 
    list_node_t* current;
    list_traverse(dfa->__nodes, current) {
