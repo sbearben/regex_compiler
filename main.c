@@ -1,19 +1,29 @@
 #include <stdio.h>
+#include <stdlib.h>
 
-#include "dfa.h"
-#include "nfa.h"
-#include "regex_nfa.h"
+#include "regex.h"
 
-int main() {
-   nfa_t* nfa = regex_to_nfa();
-   log_nfa(nfa);
-   printf("\n");
+// 1. Add runner method that confirms if a string is accepted by the dfa`
+// 2. Change how nfa consumes the input stream of regex
+// 3. Check for memory leaks?
+// 4. Try DFA minimization?
+// 5. Try NFA simulation?
 
-   dfa_t* dfa = dfa_from_nfa(nfa);
-   log_dfa(dfa);
+int main(int argc, char** argv) {
+   if (argc < 2) {
+      printf("Usage: %s <regex>\n", argv[0]);
+      return EXIT_FAILURE;
+   }
 
-   free_nfa(nfa);
-   free_dfa(dfa);
+   char* pattern = argv[1];
+   regex_t* regex = new_regex(pattern);
 
-   return 0;
+   char input[256];
+   while (scanf("Enter input: %s\n", input) != EOF) {
+      printf("regex accepts: %s\n\n", regex_accepts(regex, input) ? "true" : "false");
+   }
+
+   regex_release(regex);
+
+   return EXIT_SUCCESS;
 }

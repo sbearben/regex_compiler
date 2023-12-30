@@ -5,11 +5,14 @@ OUTDIR = bin
 
 all: main
 
-main: main.c regex_nfa.o dfa.o nfa.o list.o utils.o
+main: main.c regex.o parse.o dfa.o nfa.o list.o utils.o
 	$(CC) $(CCFLAGS) $(INCLUDE) $^ -o ./$(OUTDIR)/$@
 
-regex_nfa.o: regex_nfa.c regex_nfa.h
-	$(CC) $(CCFLAGS) $(INCLUDE) regex_nfa.c -o $@ -c
+regex.o: regex.c
+	$(CC) $(CCFLAGS) $(INCLUDE) regex.c -o $@ -c
+
+parse.o: parse.c
+	$(CC) $(CCFLAGS) $(INCLUDE) parse.c -o $@ -c
 
 dfa.o: dfa.c
 	$(CC) $(CCFLAGS) $(INCLUDE) dfa.c -o $@ -c
