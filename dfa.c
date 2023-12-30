@@ -210,12 +210,19 @@ static void dfa_node_add_edge(dfa_node_t* dfa_node, char symbol, dfa_node_t* to)
 
 static char* create_id_for_set(list_t* nfa_nodes) {
    list_sort(nfa_nodes, nfa_node_comparator);
+   int id_length = 0;
 
-   // TODO: Could figure out number to allocate by traversing and summing num_places
-   char* id = (char*)malloc(sizeof(char) * 256);
+   // Calculate length of id
+   list_node_t* current;
+   list_traverse(nfa_nodes, current) {
+      id_length += num_places(((nfa_node_t*)current->data)->id) + 1;
+   }
+
+   // Don't need +1 for null terminator since length calculation always adds 1 extra
+   char* id = (char*)malloc(sizeof(char) * id_length);
    id[0] = '\0';
 
-   list_node_t* current;
+   // Create id
    list_traverse(nfa_nodes, current) {
       if (id[0] == '\0') {
          sprintf(id, "%d", ((nfa_node_t*)current->data)->id);
