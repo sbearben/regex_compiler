@@ -152,8 +152,6 @@ static epsilon_closure_t* compute_epsilon_closure_for_set(list_t* nfa_nodes, cha
          if (!list_contains(set_eclosure->nodes, current_closure_nfa_node->data, NULL)) {
             list_push(set_eclosure->nodes, current_closure_nfa_node->data);
          }
-         // TODO: this doesn't seem great, do we need this?
-         current_closure_nfa_node->data = NULL;
       }
       free_epsilon_closure(node_closure);
    }
