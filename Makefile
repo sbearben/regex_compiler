@@ -2,7 +2,10 @@ CC = gcc
 CCFLAGS = -std=gnu99 -Wall
 INCLUDE = -I./
 OUTDIR = bin
+
 TESTDIR = testing
+T_LDFLAGS = -ldl
+TF_CCFLAGS = $(CCFLAGS) -shared
 
 # $^ = all dependencies
 # $< = first dependency
@@ -38,20 +41,20 @@ utils.o: utils.c utils.h
 tests: test regex_test.so
 
 test: test.o list.o
-	$(CC) $(CCFLAGS) $(INCLUDE) -ldl $(TESTDIR)/test.o list.o -o $(OUTDIR)/$@
+	$(CC) $(CCFLAGS) $(INCLUDE) $(T_LDFLAGS) $(TESTDIR)/test.o list.o -o $(OUTDIR)/$@
 
 test.o: $(TESTDIR)/test.c $(TESTDIR)/test.h
 	$(CC) $(CCFLAGS) $(INCLUDE) $< -o $(TESTDIR)/$@ -c
 
 regex_test.so: $(TESTDIR)/regex_test.c regex.o parse.o dfa.o nfa.o list.o utils.o
-	$(CC) $(CCFLAGS) $(INCLUDE) -shared -rdynamic $^ -o ./$(TESTDIR)/$@
+	$(CC) $(TF_CCFLAGS) $(INCLUDE) $(T_LDFLAGS) $^ -o ./$(TESTDIR)/$@
 
 ## Commands
 
 .PHONY: clean format
 
 clean:
-	rm -f ./$(OUTDIR)/* *.o ./$(TESTDIR)/*.o
+	rm -f ./$(OUTDIR)/* *.o ./$(TESTDIR)/*.o ./$(TESTDIR)/*.so
 
 format:
 	clang-format -style=file -i *.c *.h

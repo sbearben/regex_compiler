@@ -8,11 +8,12 @@
 
 // 1. [DONE] Add runner method that confirms if a string is accepted by the dfa`
 // 2. [DONE] Change how nfa consumes the input stream of regex
-// 3. Add more regex functions (find all matches in input string, etc.);
-// 4. Check for memory leaks?
-// 5. Add tests
-// 6. Try DFA minimization?
-// 7. Try NFA simulation?
+// 3. Rename regex.c/regex.h to something that doens't conflict with the POSIX regex.h
+// 4. Add more regex functions (find all matches in input string, etc.);
+// 5. Check for memory leaks?
+// 6. Add tests
+// 7. Try DFA minimization?
+// 8. Try NFA simulation?
 
 void read_line(char* buffer, int size) {
    int i = 0;

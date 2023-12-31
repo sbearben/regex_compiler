@@ -47,6 +47,18 @@ void __register_test(const char* name, test_func_t func) {
    list_push(runner->test_cases, test_case);
 }
 
+void __assert(bool condition, const char* condition_str, const char* file, const char* func,
+              int line) {
+   if (!condition) {
+      printf("\n");
+      printf("Assertion failed: %s\n", condition_str);
+      printf("  File: %s\n", file);
+      printf("  Func: %s\n", func);
+      printf("  Line: %d\n", line);
+      exit(EXIT_FAILURE);
+   }
+}
+
 static test_runner_t* test_runner_new(const char* test_name) {
    test_runner_t* test_runner = (test_runner_t*)malloc(sizeof(test_runner_t));
    test_runner->test_cases = (list_t*)malloc(sizeof(list_t));
@@ -89,19 +101,8 @@ static void test_run_all(test_runner_t* runner) {
    list_node_t* current;
    list_traverse(runner->test_cases, current) {
       test_case_t* test_case = (test_case_t*)current->data;
-      printf("Running test: %s\n", test_case->name);
+      printf("Running test: %s\n\n", test_case->name);
       test_case->func();
-   }
-}
-
-void ___assert(bool condition, const char* condition_str, const char* file, const char* func,
-               int line) {
-   if (!condition) {
-      printf("Assertion failed: %s\n", condition_str);
-      printf("  File: %s\n", file);
-      printf("  Func: %s\n", func);
-      printf("  Line: %d\n", line);
-      exit(EXIT_FAILURE);
    }
 }
 

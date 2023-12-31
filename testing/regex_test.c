@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "test.h"
+#include "test_file.h"
 
 void regex_accepts_matches_exactly(void) {
    // TEST_CASE(regex_accepts_matches_exactly) {
@@ -12,9 +12,9 @@ void regex_accepts_matches_exactly(void) {
    char* pattern = "(a|b)*ab(b|cc)kkws*";
    regex_t* regex = new_regex(pattern);
 
-   assert_true(regex_accepts(regex, "abkkws"));
-   assert_true(regex_accepts(regex, "abckkws"));
-   assert_true(regex_accepts(regex, "abccckkws"));
+   assert_true(regex_accepts(regex, "abcckkws"));
+   assert_true(regex_accepts(regex, "abababbkkws"));
+   assert_true(regex_accepts(regex, "abcckkw"));
    assert_true(regex_accepts(regex, "aaaaabbbbbbbabbkkwsssssss"));
 
    assert_false(regex_accepts(regex, "abkkw"));
@@ -37,7 +37,8 @@ void regex_accepts_matches_exactly(void) {
    assert_true(regex_accepts(regex, "bc"));
    assert_true(regex_accepts(regex, "abc"));
    assert_true(regex_accepts(regex, "abcc"));
-   assert_true(regex_accepts(regex, "abccc"));
+   assert_true(regex_accepts(regex, "aaaccc"));
+   assert_true(regex_accepts(regex, "aaabbccc"));
 
    assert_false(regex_accepts(regex, "d"));
    assert_false(regex_accepts(regex, "ad"));
