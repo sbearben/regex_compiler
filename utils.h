@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 void* xmalloc(size_t size);
-void error(void);
+void error(char*);
 int num_places(int n);
 
 #endif  // UTILS_H

@@ -15,6 +15,7 @@
 #include "parse.h"
 
 #include <ctype.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -49,6 +50,8 @@ static nfa_t* new_concat_nfa(nfa_t*, nfa_t*);
 static nfa_t* new_repetition_nfa(nfa_t*);
 static nfa_t* new_literal_nfa(char);
 
+static bool valid_character(char c) { return isalnum(c) || c == ' '; }
+
 nfa_t* parse_regex_to_nfa(char* pattern) {
    state_t state = {
        .pattern = pattern,
@@ -56,8 +59,12 @@ nfa_t* parse_regex_to_nfa(char* pattern) {
    };
    nfa_t* result = regexp(&state);
 
+   printf("Finished nfa parsing\n");
+
    if (peek(&state) != '\0') {
-      error();
+      printf("Current: %c, int value: %d, is space: %d\n", peek(&state), peek(&state),
+             peek(&state) == ' ');
+      error("Expected end of input (\'\\0\'))");
    }
 
    return result;
@@ -69,7 +76,7 @@ static void match(state_t* state, char expectedToken) {
    if (peek(state) == expectedToken)
       state->current++;
    else
-      error();
+      error("Unexpected token");
 }
 
 static nfa_t* regexp(state_t* state) {
@@ -83,8 +90,9 @@ static nfa_t* regexp(state_t* state) {
 
 static nfa_t* concat(state_t* state) {
    nfa_t* temp = repetition(state);
-   while (isalnum(peek(state)) || peek(state) == '(') {
+   while (valid_character(peek(state)) || peek(state) == '(') {
       // We don't match here since current token is part of first set of `factor`, so if we matched the conditions in factor will fail
+      // - would be better to store the "first set" of factor and check if current token is in that set (see: first/follow sets)
       temp = new_concat_nfa(temp, repetition(state));
    }
    return temp;
@@ -105,12 +113,12 @@ static nfa_t* factor(state_t* state) {
       match(state, '(');
       temp = regexp(state);
       match(state, ')');
-   } else if (isalnum(peek(state))) {
+   } else if (valid_character(peek(state))) {
       char value = peek(state);
       match(state, value);
       temp = new_literal_nfa(value);
    } else {
-      error();
+      error("[factor] Unexpected token");
    }
    return temp;
 }

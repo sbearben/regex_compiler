@@ -24,7 +24,7 @@ int num_places(int n) {
    return r;
 }
 
-void error(void) {
-   fprintf(stderr, "Error\n");
+void error(char* msg) {
+   fprintf(stderr, "Error: %s\n", msg);
    exit(EXIT_FAILURE);
 }
