@@ -8,7 +8,7 @@
 
 // Puglic API for test files
 #define TEST_CASE(name) void name(void)
-#define REGISTER_TEST(func) __plugin_register_test(#func, func)
+#define REGISTER_TEST(func) __plugin_register_test(#func, func, __FILE__)
 
 #define assert_true(condition) __plugin_assert(condition, #condition, __FILE__, __func__, __LINE__);
 #define assert_false(condition) \
@@ -28,11 +28,11 @@ static void* __load_main_function(const char* symbol_name) {
    return symbol;
 }
 
-static void __plugin_register_test(const char* name, test_func_t func) {
+static void __plugin_register_test(const char* name, test_func_t func, const char* filename) {
    if (__main_register_test == NULL) {
       __main_register_test = (register_test_f)__load_main_function("__register_test");
    }
-   __main_register_test(name, func);
+   __main_register_test(name, func, filename);
 }
 
 static void __plugin_assert(bool condition, const char* condition_str, const char* file,
