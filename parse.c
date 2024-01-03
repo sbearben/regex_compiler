@@ -59,11 +59,7 @@ nfa_t* parse_regex_to_nfa(char* pattern) {
    };
    nfa_t* result = regexp(&state);
 
-   printf("Finished nfa parsing\n");
-
    if (peek(&state) != '\0') {
-      printf("Current: %c, int value: %d, is space: %d\n", peek(&state), peek(&state),
-             peek(&state) == ' ');
       error("Expected end of input (\'\\0\'))");
    }
 
