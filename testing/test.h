@@ -7,7 +7,7 @@
 typedef void (*test_func_t)(void);
 typedef void (*on_register_tests_f)(void);
 
-typedef void (*register_test_f)(const char*, test_func_t);
+typedef void (*register_test_f)(const char*, test_func_t, const char*);
 typedef void (*assert_f)(bool, const char*, const char*, const char*, int);
 
 #endif  // TEST_H
