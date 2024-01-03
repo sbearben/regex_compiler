@@ -6,8 +6,7 @@
 
 #include "test_file.h"
 
-void regex_accepts_matches_exactly(void) {
-   // TEST_CASE(regex_accepts_matches_exactly) {
+TEST_CASE(regex_accepts_matches_exactly) {
    // First pattern
    char* pattern = "(a|b)*ab(b|cc)kkws*";
    regex_t* regex = new_regex(pattern);
@@ -49,15 +48,16 @@ void regex_accepts_matches_exactly(void) {
    regex_release(regex);
 
    // Third pattern
-   pattern = "hello (world|there|you)";
+   pattern = "hello( world| there| you)*";
    regex = new_regex(pattern);
 
    assert_true(regex_accepts(regex, "hello world"));
    assert_true(regex_accepts(regex, "hello there"));
    assert_true(regex_accepts(regex, "hello you"));
+   assert_true(regex_accepts(regex, "hello"));
 
-   assert_false(regex_accepts(regex, "hello"));
-   assert_false(regex_accepts(regex, "hello world there"));
+   assert_false(regex_accepts(regex, "hello world  there"));
+   assert_false(regex_accepts(regex, "hello "));
    assert_false(regex_accepts(regex, "he hello world you"));
 
    regex_release(regex);
