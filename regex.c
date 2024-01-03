@@ -40,11 +40,11 @@ void regex_release(regex_t* regex) {
 static dfa_t* regex_parse(char* pattern) {
    nfa_t* nfa = parse_regex_to_nfa(pattern);
    // log_nfa(nfa);
-   // printf("\n");
 
    dfa_t* dfa = dfa_from_nfa(nfa);
    free_nfa(nfa);
 
+   printf("\n");
    log_dfa(dfa);
 
    return dfa;
