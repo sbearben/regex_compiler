@@ -13,7 +13,7 @@ TF_CCFLAGS = $(CCFLAGS) -shared
 # -ldl = dynamic linking library
 # -static = static linking flag
 
-all: main
+all: main tests
 
 main: main.c regex.o parse.o dfa.o nfa.o list.o utils.o
 	$(CC) $(CCFLAGS) $(INCLUDE) $^ -o $(OUTDIR)/$@
