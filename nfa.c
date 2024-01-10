@@ -135,7 +135,7 @@ static void free_list_node(list_node_t* list_node) {
 }
 
 void log_nfa(nfa_t* nfa) {
-   printf("NFA:\n");
+   printf("NFA (start - %d):\n", nfa->start->id);
    nfa_traverse(nfa, log_node);
 }
 

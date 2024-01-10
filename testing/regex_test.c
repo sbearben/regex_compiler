@@ -7,8 +7,7 @@
 
 TEST_CASE(regex_accepts_matches_exactly) {
    // First pattern
-   char* pattern = "(a|b)*ab(b|cc)kkws*";
-   regex_t* regex = new_regex(pattern);
+   regex_t* regex = new_regex("(a|b)*ab(b|cc)kkws*");
 
    assert_true(regex_accepts(regex, "abcckkws"));
    assert_true(regex_accepts(regex, "abababbkkws"));
@@ -23,8 +22,7 @@ TEST_CASE(regex_accepts_matches_exactly) {
    regex_release(regex);
 
    // Second pattern
-   pattern = "a*b*c*";
-   regex = new_regex(pattern);
+   regex = new_regex("a*b*c*");
 
    assert_true(regex_accepts(regex, ""));
    assert_true(regex_accepts(regex, "a"));
@@ -47,13 +45,13 @@ TEST_CASE(regex_accepts_matches_exactly) {
    regex_release(regex);
 
    // Third pattern
-   pattern = "hello( world| there| you)*";
-   regex = new_regex(pattern);
+   regex = new_regex("hello( world| there| you)*");
 
    assert_true(regex_accepts(regex, "hello world"));
    assert_true(regex_accepts(regex, "hello there"));
    assert_true(regex_accepts(regex, "hello you"));
    assert_true(regex_accepts(regex, "hello"));
+   assert_true(regex_accepts(regex, "hello world there world you you"));
 
    assert_false(regex_accepts(regex, "hello world  there"));
    assert_false(regex_accepts(regex, "hello "));
@@ -62,4 +60,41 @@ TEST_CASE(regex_accepts_matches_exactly) {
    regex_release(regex);
 }
 
-void on_register_tests(void) { REGISTER_TEST(regex_accepts_matches_exactly); }
+TEST_CASE(regex_matches_quantifiers) {
+   // First
+   regex_t* regex = new_regex("a*b+c?d");
+
+   assert_true(regex_accepts(regex, "abd"));
+   assert_true(regex_accepts(regex, "bcd"));
+   assert_true(regex_accepts(regex, "bd"));
+   assert_true(regex_accepts(regex, "bbbbbbcd"));
+   assert_true(regex_accepts(regex, "abbd"));
+   assert_true(regex_accepts(regex, "aaaabbbd"));
+   assert_true(regex_accepts(regex, "abbbcd"));
+   assert_true(regex_accepts(regex, "abbbd"));
+   assert_true(regex_accepts(regex, "abcd"));
+
+   assert_false(regex_accepts(regex, "ad"));
+   assert_false(regex_accepts(regex, "ac"));
+   assert_false(regex_accepts(regex, "ab"));
+   assert_false(regex_accepts(regex, "acd"));
+
+   regex_release(regex);
+
+   // Seconds
+   regex = new_regex("hello( world| there| you)?");
+
+   assert_true(regex_accepts(regex, "hello world"));
+   assert_true(regex_accepts(regex, "hello there"));
+   assert_true(regex_accepts(regex, "hello you"));
+   assert_true(regex_accepts(regex, "hello"));
+
+   assert_false(regex_accepts(regex, "hello world there"));
+
+   regex_release(regex);
+}
+
+void on_register_tests(void) {
+   REGISTER_TEST(regex_accepts_matches_exactly);
+   REGISTER_TEST(regex_matches_quantifiers);
+}
