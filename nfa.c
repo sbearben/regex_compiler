@@ -92,6 +92,8 @@ void init_epsilon(nfa_edge_t* edge) {
    edge->to = NULL;
 }
 
+int nfa_num_states(nfa_t* nfa) { return list_size(nfa->__nodes); }
+
 void free_nfa(nfa_t* nfa) {
    // Releaase all nodes in the nfa
    list_release(nfa->__nodes);

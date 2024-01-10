@@ -26,7 +26,7 @@ struct nfa_edge {
       nfa_node_t* to;
 };
 
-// Constructors and setters
+// Constructors, getter/setters
 nfa_t* new_nfa();
 void nfa_consume_nodes(nfa_t*, nfa_t*);
 void nfa_set_start_end(nfa_t*, nfa_node_t*, nfa_node_t*);
@@ -35,6 +35,7 @@ nfa_node_t* new_node(int);
 nfa_edge_t* new_edges(int);
 void node_set_edges(nfa_node_t*, nfa_edge_t*, int);
 void init_epsilon(nfa_edge_t*);
+int nfa_num_states(nfa_t*);
 
 // Destructors
 void free_nfa(nfa_t*);
