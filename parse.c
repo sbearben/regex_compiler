@@ -3,9 +3,10 @@
  * 
  * Regex EBNF grammar:
  * <regexp> -> <concat> { "|" <concat> }
- * <concat> -> <repetition> { <repetition> }
- * <repetition> -> <factor> [ * ]
+ * <concat> -> <quantifier> { <quantifier> }
+ * <quantifier> -> <factor> [ <quantifier-symbol> ]
  * <factor> ( <regexp> ) | Letter
+ * <quantifier-symbol> -> * | + | ?
  * 
  * Inputs a line of text from stdin
  * Outputs "Error" or the result.
@@ -25,7 +26,6 @@
  * Improvement ideas:
  * - Instead of `start` on nfa be a node, make it an edge that points to the start node
  *   - this might make it easier to compose nfas
- * - Add support for '?' and '+' operators
  * - Add support for character classes / ranges
  * - Add support for escape sequences
  */
@@ -41,16 +41,30 @@ static void match(state_t*, char);
 // Recursive descent functions
 static nfa_t* regexp(state_t*);
 static nfa_t* concat(state_t*);
-static nfa_t* repetition(state_t*);
+static nfa_t* quantifier(state_t*);
 static nfa_t* factor(state_t*);
 
 // Constructors per parser grammar
-static nfa_t* new_choice_nfa(nfa_t*, nfa_t*);
-static nfa_t* new_concat_nfa(nfa_t*, nfa_t*);
-static nfa_t* new_repetition_nfa(nfa_t*);
-static nfa_t* new_literal_nfa(char);
+static nfa_t* new_choice_nfa(nfa_t*, nfa_t*);      // 'a|b'
+static nfa_t* new_concat_nfa(nfa_t*, nfa_t*);      // 'ab'
+static nfa_t* new_repetition_nfa(nfa_t*);          // 'a*'
+static nfa_t* new_min_one_repetition_nfa(nfa_t*);  // 'a+'
+static nfa_t* new_optional_nfa(nfa_t*);            // 'a?'
+static nfa_t* new_literal_nfa(char);               // 'a'
+
+enum QUANTIFIER_SYMBOL {
+   STAR = '*',
+   PLUS = '+',
+   QUESTION = '?',
+};
 
 static bool valid_character(char c) { return isalnum(c) || c == ' '; }
+
+static bool is_quantifier_symbol(char c) { return c == STAR || c == PLUS || c == QUESTION; }
+
+/**
+ * Parser
+*/
 
 nfa_t* parse_regex_to_nfa(char* pattern) {
    state_t state = {
@@ -85,20 +99,33 @@ static nfa_t* regexp(state_t* state) {
 }
 
 static nfa_t* concat(state_t* state) {
-   nfa_t* temp = repetition(state);
+   nfa_t* temp = quantifier(state);
    while (valid_character(peek(state)) || peek(state) == '(') {
       // We don't match here since current token is part of first set of `factor`, so if we matched the conditions in factor will fail
       // - would be better to store the "first set" of factor and check if current token is in that set (see: first/follow sets)
-      temp = new_concat_nfa(temp, repetition(state));
+      temp = new_concat_nfa(temp, quantifier(state));
    }
    return temp;
 }
 
-static nfa_t* repetition(state_t* state) {
+static nfa_t* quantifier(state_t* state) {
    nfa_t* temp = factor(state);
-   if (peek(state) == '*') {
-      match(state, '*');
-      temp = new_repetition_nfa(temp);
+   if (is_quantifier_symbol(peek(state))) {
+      char symbol = peek(state);
+      match(state, symbol);
+      switch (symbol) {
+         case STAR:
+            temp = new_repetition_nfa(temp);
+            break;
+         case PLUS:
+            temp = new_min_one_repetition_nfa(temp);
+            break;
+         case QUESTION:
+            temp = new_optional_nfa(temp);
+            break;
+         default:
+            error("Invalid quantifier symbol");
+      }
    }
    return temp;
 }
@@ -118,6 +145,10 @@ static nfa_t* factor(state_t* state) {
    }
    return temp;
 }
+
+/**
+ * NFA constructors
+*/
 
 static nfa_t* new_choice_nfa(nfa_t* left, nfa_t* right) {
    nfa_t* nfa = new_nfa();
@@ -213,6 +244,72 @@ static nfa_t* new_repetition_nfa(nfa_t* old_nfa) {
    old_end_edges[0].to = old_nfa->start;
    old_end_edges[1].to = end_node;
    node_set_edges(old_nfa->end, old_end_edges, 2);
+
+   // Hook up start and end to nfa
+   nfa_set_start_end(nfa, start_node, end_node);
+
+   // Free the old nfa, but not its contents;
+   free(old_nfa);
+
+   return nfa;
+}
+
+static nfa_t* new_min_one_repetition_nfa(nfa_t* old_nfa) {
+   nfa_t* nfa = new_nfa();
+   nfa_consume_nodes(nfa, old_nfa);
+
+   // Turn off 'accepting' of previous nfa
+   old_nfa->end->is_accepting = false;
+
+   // Create the start and end nodes of repetition nfa
+   nfa_node_t* start_node = nfa_new_node(nfa, 1);
+   nfa_node_t* end_node = nfa_new_node(nfa, 0);
+
+   // Initialize epsilon edges for start node
+   init_epsilon(&start_node->edges[0]);
+   start_node->edges[0].to = old_nfa->start;
+
+   // Create epsilon edges for old end node
+   nfa_edge_t* old_end_edges = new_edges(2);
+   for (int i = 0; i < 2; i++) {
+      init_epsilon(&old_end_edges[i]);
+   }
+   old_end_edges[0].to = old_nfa->start;
+   old_end_edges[1].to = end_node;
+   node_set_edges(old_nfa->end, old_end_edges, 2);
+
+   // Hook up start and end to nfa
+   nfa_set_start_end(nfa, start_node, end_node);
+
+   // Free the old nfa, but not its contents;
+   free(old_nfa);
+
+   return nfa;
+}
+
+static nfa_t* new_optional_nfa(nfa_t* old_nfa) {
+   nfa_t* nfa = new_nfa();
+   nfa_consume_nodes(nfa, old_nfa);
+
+   // Turn off 'accepting' of previous nfa
+   old_nfa->end->is_accepting = false;
+
+   // Create the start and end nodes of repetition nfa
+   nfa_node_t* start_node = nfa_new_node(nfa, 2);
+   nfa_node_t* end_node = nfa_new_node(nfa, 0);
+
+   // Initialize epsilon edges for start node
+   for (int i = 0; i < start_node->num_edges; i++) {
+      init_epsilon(&start_node->edges[i]);
+   }
+   start_node->edges[0].to = old_nfa->start;
+   start_node->edges[1].to = end_node;
+
+   // Create epsilon edges for old end node
+   nfa_edge_t* old_end_edges = new_edges(1);
+   init_epsilon(old_end_edges);
+   old_end_edges->to = end_node;
+   node_set_edges(old_nfa->end, old_end_edges, 1);
 
    // Hook up start and end to nfa
    nfa_set_start_end(nfa, start_node, end_node);
