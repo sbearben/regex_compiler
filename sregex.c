@@ -1,4 +1,4 @@
-#include "regex.h"
+#include "sregex.h"
 
 #include <assert.h>
 #include <ctype.h>

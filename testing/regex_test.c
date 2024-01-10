@@ -1,9 +1,8 @@
-#include "../regex.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "sregex.h"
 #include "test_file.h"
 
 TEST_CASE(regex_accepts_matches_exactly) {
