@@ -13,6 +13,8 @@
 #define assert_true(condition) __plugin_assert(condition, #condition, __FILE__, __func__, __LINE__);
 #define assert_false(condition) \
    __plugin_assert(!(condition), #condition, __FILE__, __func__, __LINE__);
+#define assert_int_equal(a, b) \
+   __plugin_assert((a) == (b), #a " == " #b, __FILE__, __func__, __LINE__);
 #define assert(condition) __plugin_assert(condition, #condition, __FILE__, __func__, __LINE__);
 
 // Main executeble API references (private)
