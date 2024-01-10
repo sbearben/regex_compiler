@@ -15,10 +15,10 @@ TF_CCFLAGS = $(CCFLAGS) -shared
 
 all: main tests
 
-main: main.c regex.o parse.o dfa.o nfa.o list.o utils.o
+main: main.c sregex.o parse.o dfa.o nfa.o list.o utils.o
 	$(CC) $(CCFLAGS) $(INCLUDE) $^ -o $(OUTDIR)/$@
 
-regex.o: regex.c regex.h
+sregex.o: sregex.c sregex.h
 	$(CC) $(CCFLAGS) $(INCLUDE) $< -o $@ -c
 
 parse.o: parse.c parse.h
@@ -46,7 +46,7 @@ test: test.o list.o
 test.o: $(TESTDIR)/test.c $(TESTDIR)/test.h
 	$(CC) $(CCFLAGS) $(INCLUDE) $< -o $(TESTDIR)/$@ -c
 
-regex_test.so: $(TESTDIR)/regex_test.c regex.o parse.o dfa.o nfa.o list.o utils.o
+regex_test.so: $(TESTDIR)/regex_test.c sregex.o parse.o dfa.o nfa.o list.o utils.o
 	$(CC) $(TF_CCFLAGS) $(INCLUDE) $(T_LDFLAGS) $^ -o ./$(TESTDIR)/$@
 
 ## Commands
