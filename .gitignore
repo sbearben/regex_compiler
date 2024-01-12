@@ -3,4 +3,5 @@
 *.so
 .vscode
 temp/
-bin/*
+bin/main
+bin/test
