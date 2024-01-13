@@ -6,7 +6,7 @@
 
 #include "test.h"
 
-// Puglic API for test files
+// Public API for test files
 #define TEST_CASE(name) void name(void)
 #define REGISTER_TEST(func) __plugin_register_test(#func, func, __FILE__)
 

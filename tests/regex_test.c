@@ -81,7 +81,7 @@ TEST_CASE(regex_matches_quantifiers) {
 
    regex_release(regex);
 
-   // Seconds
+   // Second
    regex = new_regex("hello( world| there| you)?");
 
    assert_true(regex_accepts(regex, "hello world"));

@@ -89,6 +89,12 @@ static void match(state_t* state, char expectedToken) {
       error("Unexpected token");
 }
 
+static char next(state_t* state) {
+   char c = peek(state);
+   state->current++;
+   return c;
+}
+
 static nfa_t* regexp(state_t* state) {
    nfa_t* temp = concat(state);
    while (peek(state) == '|') {
@@ -111,8 +117,7 @@ static nfa_t* concat(state_t* state) {
 static nfa_t* quantifier(state_t* state) {
    nfa_t* temp = factor(state);
    if (is_quantifier_symbol(peek(state))) {
-      char symbol = peek(state);
-      match(state, symbol);
+      char symbol = next(state);
       switch (symbol) {
          case STAR:
             temp = new_repetition_nfa(temp);
@@ -137,8 +142,7 @@ static nfa_t* factor(state_t* state) {
       temp = regexp(state);
       match(state, ')');
    } else if (valid_character(peek(state))) {
-      char value = peek(state);
-      match(state, value);
+      char value = next(state);
       temp = new_literal_nfa(value);
    } else {
       error("[factor] Unexpected token");
