@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
       printf("Pattern: %s\n", pattern);
       printf("  Input: ");
       read_line(input, MAX_INPUT_SIZE);
-      printf("  ACCEPTS: %s\n", regex_accepts(regex, input) ? "true" : "false");
+      printf("  Result: %s\n", regex_accepts(regex, input) ? "ACCEPTED" : "NOT ACCEPTED");
    }
 
    regex_release(regex);
