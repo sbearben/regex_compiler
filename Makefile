@@ -3,9 +3,14 @@ CCFLAGS = -std=gnu99 -Wall
 INCLUDE = -I./
 OUTDIR = bin
 
-TESTDIR = testing
-T_LDFLAGS = -ldl
+# Test lib
+TESTLIB = lib/testing
+TLDFLAGS = -ldl
+
+# Test files
+TF_DIR = tests
 TF_CCFLAGS = $(CCFLAGS) -shared
+TF_INCLUDE = $(INCLUDE) -I./$(TESTLIB)
 
 # $^ = all dependencies
 # $< = first dependency
@@ -41,23 +46,23 @@ utils.o: utils.c utils.h
 tests: test regex_test.so parse_test.so
 
 test: test.o list.o
-	$(CC) $(CCFLAGS) $(INCLUDE) $(T_LDFLAGS) $(TESTDIR)/test.o list.o -o $(OUTDIR)/$@
+	$(CC) $(CCFLAGS) $(INCLUDE) $(TLDFLAGS) $(TESTLIB)/test.o list.o -o $(OUTDIR)/$@
 
-test.o: $(TESTDIR)/test.c $(TESTDIR)/test.h
-	$(CC) $(CCFLAGS) $(INCLUDE) $< -o $(TESTDIR)/$@ -c
+test.o: $(TESTLIB)/test.c $(TESTLIB)/test.h
+	$(CC) $(CCFLAGS) $(INCLUDE) $< -o $(TESTLIB)/$@ -c
 
-regex_test.so: $(TESTDIR)/regex_test.c sregex.o parse.o dfa.o nfa.o list.o utils.o
-	$(CC) $(TF_CCFLAGS) $(INCLUDE) $(T_LDFLAGS) $^ -o ./$(TESTDIR)/$@
+regex_test.so: $(TF_DIR)/regex_test.c sregex.o parse.o dfa.o nfa.o list.o utils.o
+	$(CC) $(TF_CCFLAGS) $(TF_INCLUDE) $^ -o ./$(TF_DIR)/$@
 
-parse_test.so: $(TESTDIR)/parse_test.c parse.o nfa.o list.o utils.o
-	$(CC) $(TF_CCFLAGS) $(INCLUDE) $(T_LDFLAGS) $^ -o ./$(TESTDIR)/$@
+parse_test.so: $(TF_DIR)/parse_test.c parse.o nfa.o list.o utils.o
+	$(CC) $(TF_CCFLAGS) $(TF_INCLUDE) $^ -o ./$(TF_DIR)/$@
 
 ## Commands
 
 .PHONY: clean format
 
 clean:
-	rm -f ./$(OUTDIR)/* *.o ./$(TESTDIR)/*.o ./$(TESTDIR)/*.so
+	rm -f ./$(OUTDIR)/* *.o ./$(TESTLIB)/*.o ./$(TF_DIR)/*.so
 
 format:
 	clang-format -style=file -i *.c *.h
