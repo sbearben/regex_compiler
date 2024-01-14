@@ -110,6 +110,26 @@ TEST_CASE(regex_test_matches_any_substring) {
    regex_release(regex);
 }
 
+TEST_CASE(regex_matches_escape_characters) {
+   // First
+   regex_t* regex = new_regex("they're \\(\\\"them\\\"\\)\\.");
+
+   assert_true(regex_accepts(regex, "they're (\"them\")."));
+   assert_false(regex_accepts(regex, "they're (them)"));
+
+   regex_release(regex);
+
+   // Second
+   regex = new_regex("2005 cup champions\\*");
+   assert_true(regex_accepts(regex, "2005 cup champions*"));
+   regex_release(regex);
+
+   // Third
+   regex = new_regex("how are you\\?");
+   assert_true(regex_accepts(regex, "how are you?"));
+   regex_release(regex);
+}
+
 void on_register_tests(void) {
    REGISTER_TEST(regex_accepts_matches_exactly);
    REGISTER_TEST(regex_matches_quantifiers);

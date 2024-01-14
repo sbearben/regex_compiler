@@ -30,6 +30,7 @@
  * - Add support for escape sequences
  * - Add support for character classes / ranges
  * - Add support for escape sequences
+ * - Expand set of recognized literals
  */
 
 typedef struct state {
@@ -54,15 +55,47 @@ static nfa_t* new_min_one_repetition_nfa(nfa_t*);  // 'a+'
 static nfa_t* new_optional_nfa(nfa_t*);            // 'a?'
 static nfa_t* new_literal_nfa(char);               // 'a'
 
-enum QUANTIFIER_SYMBOL {
+enum ESCAPABLE_CHARACTERS {
    STAR = '*',
    PLUS = '+',
    QUESTION = '?',
+   PERIOD = '.',
+   PIPE = '|',
+   OPEN_PAREN = '(',
+   CLOSE_PAREN = ')',
+   BACKSLASH = '\\',
+   FORWARD_SLASH = '/',
+   DOUBLE_QUOTE = '"',  // Don't need to escape single quotes
+   TAB = 't',
+   NEWLINE = 'n',
+   CARRIAGE_RETURN = 'r',
 };
 
-static bool valid_character(char c) { return isalnum(c) || c == ' '; }
+static bool valid_literal(char c) { return isalnum(c) || c == ' '; }
 
 static bool is_quantifier_symbol(char c) { return c == STAR || c == PLUS || c == QUESTION; }
+
+static bool is_escapable_character(char c) {
+   return c == STAR || c == PLUS || c == QUESTION || c == PERIOD || c == PIPE || c == OPEN_PAREN ||
+          c == CLOSE_PAREN || c == TAB || c == NEWLINE || c == CARRIAGE_RETURN || c == BACKSLASH ||
+          c == FORWARD_SLASH;
+}
+
+static char get_escaped_character(char c) {
+   switch (c) {
+      case TAB:
+         return '\t';
+      case NEWLINE:
+         return '\n';
+      case CARRIAGE_RETURN:
+         return '\r';
+      default:
+         return c;
+   }
+}
+
+// Whether the character is in the first set of 'factor'
+static bool in_factor_first_set(char c) { return valid_literal(c) || c == '(' || c == '\\'; }
 
 /**
  * Parser
@@ -108,9 +141,8 @@ static nfa_t* regexp(state_t* state) {
 
 static nfa_t* concat(state_t* state) {
    nfa_t* temp = quantifier(state);
-   while (valid_character(peek(state)) || peek(state) == '(') {
+   while (in_factor_first_set(peek(state))) {
       // We don't match here since current token is part of first set of `factor`, so if we matched the conditions in factor will fail
-      // - would be better to store the "first set" of factor and check if current token is in that set (see: first/follow sets)
       temp = new_concat_nfa(temp, quantifier(state));
    }
    return temp;
@@ -143,7 +175,14 @@ static nfa_t* factor(state_t* state) {
       match(state, '(');
       temp = regexp(state);
       match(state, ')');
-   } else if (valid_character(peek(state))) {
+   } else if (peek(state) == '\\') {
+      match(state, '\\');
+      char value = next(state);
+      if (!is_escapable_character(value)) {
+         error("[factor] Invalid escapable character");
+      }
+      temp = new_literal_nfa(get_escaped_character(value));
+   } else if (valid_literal(peek(state))) {
       char value = next(state);
       temp = new_literal_nfa(value);
    } else {
