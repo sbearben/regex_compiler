@@ -12,8 +12,10 @@
 // 4. Add more regex functions (find all matches in input string, etc.);
 // 5. Check for memory leaks?
 // 6. [DONE] Add tests
-// 7. Try DFA minimization?
-// 8. Try NFA simulation?
+// 7. Use this to generate a lexical-analyzer generator?
+// 8. Try DFA minimization?
+// 9. Try NFA simulation?
+// 10. Construct the DFA directly by algorithm 3.36 in dragon book (p. 204)
 
 void read_line(char* buffer, int size) {
    int i = 0;

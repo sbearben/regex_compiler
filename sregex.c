@@ -31,6 +31,25 @@ bool regex_accepts(regex_t* regex, char* input) {
    return dfa_accepts(regex->dfa, input, strlen(input));
 }
 
+bool regex_test(regex_t* regex, char* input) {
+   char* start = input;
+   char* end = input + strlen(input);
+   char* forward;
+
+   // Calls to dfa_accepts() could be cached
+   while (start < end) {
+      forward = start + 1;
+      while (forward <= end) {
+         if (dfa_accepts(regex->dfa, start, forward - start)) {
+            return true;
+         }
+         forward++;
+      }
+      start++;
+   }
+   return false;
+}
+
 void regex_release(regex_t* regex) {
    free(regex->pattern);
    free_dfa(regex->dfa);
