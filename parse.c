@@ -26,6 +26,8 @@
  * Improvement ideas:
  * - Instead of `start` on nfa be a node, make it an edge that points to the start node
  *   - this might make it easier to compose nfas
+ * - Add support for "any character" (.)
+ * - Add support for escape sequences
  * - Add support for character classes / ranges
  * - Add support for escape sequences
  */

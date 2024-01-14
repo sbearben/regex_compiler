@@ -94,7 +94,24 @@ TEST_CASE(regex_matches_quantifiers) {
    regex_release(regex);
 }
 
+TEST_CASE(regex_test_matches_any_substring) {
+   regex_t* regex = new_regex("foo+");
+
+   assert_true(regex_test(regex, "table football"));
+   assert_true(regex_test(regex, "food"));
+   assert_true(regex_test(regex, "ur a foodie"));
+   assert_true(regex_test(regex, "the town fool"));
+
+   assert_false(regex_test(regex, "fo"));
+   assert_false(regex_test(regex, "forage"));
+   assert_false(regex_test(regex, "look over there"));
+   assert_false(regex_test(regex, "the forest is full of trees"));
+
+   regex_release(regex);
+}
+
 void on_register_tests(void) {
    REGISTER_TEST(regex_accepts_matches_exactly);
    REGISTER_TEST(regex_matches_quantifiers);
+   REGISTER_TEST(regex_test_matches_any_substring);
 }
