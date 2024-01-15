@@ -29,7 +29,6 @@
  * - Add support for "any character" (.)
  * - Add support for escape sequences
  * - Add support for character classes / ranges
- * - Add support for escape sequences
  * - Expand set of recognized literals
  */
 
@@ -71,14 +70,14 @@ enum ESCAPABLE_CHARACTERS {
    CARRIAGE_RETURN = 'r',
 };
 
-static bool valid_literal(char c) { return isalnum(c) || c == ' '; }
+static bool valid_literal(char c) { return isalnum(c) || c == ' ' || c == '\''; }
 
 static bool is_quantifier_symbol(char c) { return c == STAR || c == PLUS || c == QUESTION; }
 
 static bool is_escapable_character(char c) {
    return c == STAR || c == PLUS || c == QUESTION || c == PERIOD || c == PIPE || c == OPEN_PAREN ||
-          c == CLOSE_PAREN || c == TAB || c == NEWLINE || c == CARRIAGE_RETURN || c == BACKSLASH ||
-          c == FORWARD_SLASH;
+          c == CLOSE_PAREN || c == BACKSLASH || c == FORWARD_SLASH || c == DOUBLE_QUOTE ||
+          c == TAB || c == NEWLINE || c == CARRIAGE_RETURN;
 }
 
 static char get_escaped_character(char c) {
@@ -109,7 +108,7 @@ nfa_t* parse_regex_to_nfa(char* pattern) {
    nfa_t* result = regexp(&state);
 
    if (peek(&state) != '\0') {
-      error("Expected end of input (\'\\0\'))");
+      error("Expected end of input (\'\\0\')");
    }
 
    return result;

@@ -134,4 +134,5 @@ void on_register_tests(void) {
    REGISTER_TEST(regex_accepts_matches_exactly);
    REGISTER_TEST(regex_matches_quantifiers);
    REGISTER_TEST(regex_test_matches_any_substring);
+   REGISTER_TEST(regex_matches_escape_characters);
 }
