@@ -54,39 +54,31 @@ static nfa_t* new_min_one_repetition_nfa(nfa_t*);  // 'a+'
 static nfa_t* new_optional_nfa(nfa_t*);            // 'a?'
 static nfa_t* new_literal_nfa(char);               // 'a'
 
-enum ESCAPABLE_CHARACTERS {
-   STAR = '*',
-   PLUS = '+',
-   QUESTION = '?',
-   PERIOD = '.',
-   PIPE = '|',
-   OPEN_PAREN = '(',
-   CLOSE_PAREN = ')',
-   BACKSLASH = '\\',
-   FORWARD_SLASH = '/',
-   DOUBLE_QUOTE = '"',  // Don't need to escape single quotes
-   TAB = 't',
-   NEWLINE = 'n',
-   CARRIAGE_RETURN = 'r',
+// Don't need to escape single quotes
+const char ESCAPABLE_CHARACTERS[] = {
+    '*', '+', '?', '.', '|', '(', ')', '\\', '/', '"', 't', 'n', 'r',
 };
 
 static bool valid_literal(char c) { return isalnum(c) || c == ' ' || c == '\''; }
 
-static bool is_quantifier_symbol(char c) { return c == STAR || c == PLUS || c == QUESTION; }
+static bool is_quantifier_symbol(char c) { return c == '*' || c == '+' || c == '?'; }
 
 static bool is_escapable_character(char c) {
-   return c == STAR || c == PLUS || c == QUESTION || c == PERIOD || c == PIPE || c == OPEN_PAREN ||
-          c == CLOSE_PAREN || c == BACKSLASH || c == FORWARD_SLASH || c == DOUBLE_QUOTE ||
-          c == TAB || c == NEWLINE || c == CARRIAGE_RETURN;
+   for (int i = 0; i < sizeof(ESCAPABLE_CHARACTERS); i++) {
+      if (c == ESCAPABLE_CHARACTERS[i]) {
+         return true;
+      }
+   }
+   return false;
 }
 
 static char get_escaped_character(char c) {
    switch (c) {
-      case TAB:
+      case 't':
          return '\t';
-      case NEWLINE:
+      case 'n':
          return '\n';
-      case CARRIAGE_RETURN:
+      case 'r':
          return '\r';
       default:
          return c;
@@ -152,13 +144,13 @@ static nfa_t* quantifier(state_t* state) {
    if (is_quantifier_symbol(peek(state))) {
       char symbol = next(state);
       switch (symbol) {
-         case STAR:
+         case '*':
             temp = new_repetition_nfa(temp);
             break;
-         case PLUS:
+         case '+':
             temp = new_min_one_repetition_nfa(temp);
             break;
-         case QUESTION:
+         case '?':
             temp = new_optional_nfa(temp);
             break;
          default:
