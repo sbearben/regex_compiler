@@ -190,7 +190,7 @@ static char get_escaped_character(char c) {
 
 // Whether the character is in the first set of 'factor'
 static bool in_factor_first_set(char c) {
-   return is_special_character(c) == false || c == '(' || c == '\\';
+   return is_special_character(c) == false || c == '(' || c == '\\' || c == '.';
 }
 
 /**
@@ -279,6 +279,9 @@ static nfa_t* factor(state_t* state) {
    } else if (is_special_character(peek(state)) == false) {
       char value = next(state);
       temp = new_literal_nfa(value);
+   } else if (peek(state) == '.') {
+      match(state, '.');
+      temp = parse_regex_to_nfa("a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z| ");
    } else {
       error("[factor] Unexpected token");
    }
