@@ -27,9 +27,7 @@
  * - Instead of `start` on nfa be a node, make it an edge that points to the start node
  *   - this might make it easier to compose nfas
  * - Add support for "any character" (.)
- * - Add support for escape sequences
  * - Add support for character classes / ranges
- * - Expand set of recognized literals
  */
 
 typedef struct state {
@@ -54,23 +52,142 @@ static nfa_t* new_min_one_repetition_nfa(nfa_t*);  // 'a+'
 static nfa_t* new_optional_nfa(nfa_t*);            // 'a?'
 static nfa_t* new_literal_nfa(char);               // 'a'
 
-// Don't need to escape single quotes
-const char ESCAPABLE_CHARACTERS[] = {
-    '*', '+', '?', '.', '|', '(', ')', '\\', '/', '"', 't', 'n', 'r',
+typedef enum ChracterConfigColumn {
+   VALID_LITERAL = 0,
+   ESCAPING_BEHAVIOUR = 1,
+   QUANTIFIER_SYMBOL = 2,
+} CCCol_t;
+
+enum EscapingBehaviour {
+   NONE = 0,
+   REQUIRED_FOR_LITERAL = 1,
+   DIFFERENT_CHARACTER = 2,
 };
 
-static bool valid_literal(char c) { return isalnum(c) || c == ' ' || c == '\''; }
+/**
+ * ascii table from 32 to 126 
+ * Values represent (
+ *    valid_literal: bool,
+ *    escaping behaviour: { 0: none, 1: required_for_literal, 2: different_character },
+ *    quantifier_symbol: bool
+ * )
+ * For future: I think valid_literal is redundant. We care if a symbol is a special character or
+ *             not, and if it is, we care about its escaping behaviour.
+*/
+const int CHARACTER_CONFIG[][3] = {
+    /* ' ' */ {1, 0, 0},
+    /* '!' */ {1, 0, 0},
+    /* '"' */ {1, 1, 0},
+    /* '#' */ {1, 0, 0},
+    /* '$' */ {1, 0, 0},
+    /* '%' */ {1, 0, 0},
+    /* '&' */ {1, 0, 0},
+    /* ''' */ {1, 0, 0},
+    /* '(' */ {1, 1, 0},
+    /* ')' */ {1, 1, 0},
+    /* '*' */ {1, 1, 1},
+    /* '+' */ {1, 1, 1},
+    /* ',' */ {1, 0, 0},
+    /* '-' */ {1, 0, 0},
+    /* '.' */ {1, 1, 0},
+    /* '/' */ {1, 0, 0},
+    /* '0' */ {1, 0, 0},
+    /* '1' */ {1, 0, 0},
+    /* '2' */ {1, 0, 0},
+    /* '3' */ {1, 0, 0},
+    /* '4' */ {1, 0, 0},
+    /* '5' */ {1, 0, 0},
+    /* '6' */ {1, 0, 0},
+    /* '7' */ {1, 0, 0},
+    /* '8' */ {1, 0, 0},
+    /* '9' */ {1, 0, 0},
+    /* ':' */ {1, 0, 0},
+    /* ';' */ {1, 0, 0},
+    /* '<' */ {1, 0, 0},
+    /* '=' */ {1, 0, 0},
+    /* '>' */ {1, 0, 0},
+    /* '?' */ {1, 1, 1},
+    /* '@' */ {1, 0, 0},
+    /* 'A' */ {1, 0, 0},
+    /* 'B' */ {1, 0, 0},
+    /* 'C' */ {1, 0, 0},
+    /* 'D' */ {1, 0, 0},
+    /* 'E' */ {1, 0, 0},
+    /* 'F' */ {1, 0, 0},
+    /* 'G' */ {1, 0, 0},
+    /* 'H' */ {1, 0, 0},
+    /* 'I' */ {1, 0, 0},
+    /* 'J' */ {1, 0, 0},
+    /* 'K' */ {1, 0, 0},
+    /* 'L' */ {1, 0, 0},
+    /* 'M' */ {1, 0, 0},
+    /* 'N' */ {1, 0, 0},
+    /* 'O' */ {1, 0, 0},
+    /* 'P' */ {1, 0, 0},
+    /* 'Q' */ {1, 0, 0},
+    /* 'R' */ {1, 0, 0},
+    /* 'S' */ {1, 0, 0},
+    /* 'T' */ {1, 0, 0},
+    /* 'U' */ {1, 0, 0},
+    /* 'V' */ {1, 0, 0},
+    /* 'W' */ {1, 0, 0},
+    /* 'X' */ {1, 0, 0},
+    /* 'Y' */ {1, 0, 0},
+    /* 'Z' */ {1, 0, 0},
+    /* '[' */ {1, 0, 0},
+    /* '\' */ {1, 1, 0},
+    /* ']' */ {1, 0, 0},
+    /* '^' */ {1, 0, 0},
+    /* '_' */ {1, 0, 0},
+    /* '`' */ {1, 0, 0},
+    /* 'a' */ {1, 0, 0},
+    /* 'b' */ {1, 0, 0},
+    /* 'c' */ {1, 0, 0},
+    /* 'd' */ {1, 0, 0},
+    /* 'e' */ {1, 0, 0},
+    /* 'f' */ {1, 0, 0},
+    /* 'g' */ {1, 0, 0},
+    /* 'h' */ {1, 0, 0},
+    /* 'i' */ {1, 0, 0},
+    /* 'j' */ {1, 0, 0},
+    /* 'k' */ {1, 0, 0},
+    /* 'l' */ {1, 0, 0},
+    /* 'm' */ {1, 0, 0},
+    /* 'n' */ {1, 2, 0},
+    /* 'o' */ {1, 0, 0},
+    /* 'p' */ {1, 0, 0},
+    /* 'q' */ {1, 0, 0},
+    /* 'r' */ {1, 2, 0},
+    /* 's' */ {1, 0, 0},
+    /* 't' */ {1, 2, 0},
+    /* 'u' */ {1, 0, 0},
+    /* 'v' */ {1, 0, 0},
+    /* 'w' */ {1, 0, 0},
+    /* 'x' */ {1, 0, 0},
+    /* 'y' */ {1, 0, 0},
+    /* 'z' */ {1, 0, 0},
+    /* '{' */ {1, 0, 0},
+    /* '|' */ {1, 1, 0},
+    /* '}' */ {1, 0, 0},
+    /* '~' */ {1, 0, 0},
+};
 
-static bool is_quantifier_symbol(char c) { return c == '*' || c == '+' || c == '?'; }
-
-static bool is_escapable_character(char c) {
-   for (int i = 0; i < sizeof(ESCAPABLE_CHARACTERS); i++) {
-      if (c == ESCAPABLE_CHARACTERS[i]) {
-         return true;
-      }
+int get_character_config(char c, CCCol_t col) {
+   if (c < 32 || c > 126) {
+      return 0;
    }
-   return false;
+   return CHARACTER_CONFIG[(int)c - 32][col];
 }
+
+// A literal that is valid without escaping
+static bool literal_without_escaping(char c) {
+   return get_character_config(c, VALID_LITERAL) &&
+          get_character_config(c, ESCAPING_BEHAVIOUR) != REQUIRED_FOR_LITERAL;
+}
+
+static bool is_quantifier_symbol(char c) { return get_character_config(c, QUANTIFIER_SYMBOL); }
+
+static bool is_escapable_character(char c) { return get_character_config(c, ESCAPING_BEHAVIOUR); }
 
 static char get_escaped_character(char c) {
    switch (c) {
@@ -86,7 +203,9 @@ static char get_escaped_character(char c) {
 }
 
 // Whether the character is in the first set of 'factor'
-static bool in_factor_first_set(char c) { return valid_literal(c) || c == '(' || c == '\\'; }
+static bool in_factor_first_set(char c) {
+   return literal_without_escaping(c) || c == '(' || c == '\\';
+}
 
 /**
  * Parser
@@ -109,10 +228,11 @@ nfa_t* parse_regex_to_nfa(char* pattern) {
 static char peek(state_t* state) { return *state->current; }
 
 static void match(state_t* state, char expectedToken) {
-   if (peek(state) == expectedToken)
+   if (peek(state) == expectedToken) {
       state->current++;
-   else
+   } else {
       error("Unexpected token");
+   }
 }
 
 static char next(state_t* state) {
@@ -173,7 +293,7 @@ static nfa_t* factor(state_t* state) {
          error("[factor] Invalid escapable character");
       }
       temp = new_literal_nfa(get_escaped_character(value));
-   } else if (valid_literal(peek(state))) {
+   } else if (literal_without_escaping(peek(state))) {
       char value = next(state);
       temp = new_literal_nfa(value);
    } else {
