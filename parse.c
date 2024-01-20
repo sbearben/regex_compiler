@@ -31,7 +31,6 @@ const int NUM_LITERALS = LITERAL_END - LITERAL_START;
  * Improvement ideas:
  * - Instead of `start` on nfa be a node, make it an edge that points to the start node
  *   - this might make it easier to compose nfas
- * - Add support for "any character" (.)
  * - Add support for character classes / ranges
  */
 
