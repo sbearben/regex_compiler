@@ -18,7 +18,7 @@ struct test_runner {
       list_t* test_cases;              // list of test_case_t
       test_case_t* current_test_case;  // used to easily associate assertions with test cases
       bool has_failures;
-      // Test file API
+      // Test file
       const char* test_name;
       on_register_tests_f on_register_tests;
       void (*__dl_test_handle)(void);
@@ -40,10 +40,10 @@ struct test_result {
 static test_runner_t* runner = NULL;
 
 static test_runner_t* test_runner_new(const char*);
-static void test_run_all(test_runner_t* runner);
+static void test_run_all(test_runner_t*);
 
-static void test_runner_release(test_runner_t* test_runner);
-static void test_case_release(list_node_t* test_case);
+static void test_runner_release(test_runner_t*);
+static void test_case_release(list_node_t*);
 
 void __register_test(const char* name, test_func_t func, const char* filename) {
    test_case_t* test_case = (test_case_t*)malloc(sizeof(test_case_t));
@@ -112,6 +112,7 @@ static void test_case_release(list_node_t* test_case_node) {
    test_case_t* test_case = (test_case_t*)test_case_node->data;
    list_release(test_case->test_results);
    free(test_case);
+   free(test_case_node);
 }
 
 static void test_run_all(test_runner_t* runner) {
