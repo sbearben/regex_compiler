@@ -31,7 +31,6 @@ static list_t* compute_transition_symbols(epsilon_closure_t*);
 static list_t* compute_move_set(list_t*, char);
 
 static void free_dfa_list_node(list_node_t*);
-static void free_epsilon_closure_list_node(list_node_t*);
 static void free_epsilon_closure(epsilon_closure_t*);
 
 static int nfa_node_comparator(void*, void*);
@@ -69,9 +68,9 @@ dfa_t* dfa_from_nfa(nfa_t* nfa) {
    // Create initial eclosure from starting node of nfa, then create dfa_node from the eclosure
    epsilon_closure_t* initial_closure = compute_epsilon_closure(nfa->start);
 
-   // Create a stack of eclosures to process
+   // Create a stack of eclosures to process - this stack is empty by end of while loop
    list_t* eclosures_stack = (list_t*)malloc(sizeof(list_t));
-   list_initialize(eclosures_stack, free_epsilon_closure_list_node);
+   list_initialize(eclosures_stack, NULL);
    list_push(eclosures_stack, initial_closure);
 
    // Create initial dfa_node from initial eclosure and add to dfa
@@ -82,6 +81,7 @@ dfa_t* dfa_from_nfa(nfa_t* nfa) {
    dfa_node_t* current_dfa_node;
    epsilon_closure_t* current_closure;
    while (!list_empty(eclosures_stack)) {
+      // Have to free current_closure since it's being removed from list
       current_closure = (epsilon_closure_t*)list_deque(eclosures_stack);
       current_dfa_node = dfa_find_node(dfa, current_closure->id);
       assert(current_dfa_node != NULL);
@@ -301,11 +301,6 @@ static void free_dfa_list_node(list_node_t* list_node) {
    list_release(node->edges);
 
    free(node);
-   free(list_node);
-}
-
-static void free_epsilon_closure_list_node(list_node_t* list_node) {
-   free_epsilon_closure((epsilon_closure_t*)list_node->data);
    free(list_node);
 }
 
