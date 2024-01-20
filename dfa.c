@@ -30,7 +30,7 @@ static char* create_id_for_set(list_t*);
 static list_t* compute_transition_symbols(epsilon_closure_t*);
 static list_t* compute_move_set(list_t*, char);
 
-static void free_dfa_list_node(list_node_t*);
+static void free_dfa_list_node(void*);
 static void free_epsilon_closure(epsilon_closure_t*);
 
 static int nfa_node_comparator(void*, void*);
@@ -198,7 +198,7 @@ dfa_node_t* dfa_node_from_epsilon_closure(epsilon_closure_t* epsilon_closure) {
    strcpy(dfa_node->id, epsilon_closure->id);
    dfa_node->is_accepting = false;
    dfa_node->edges = (list_t*)malloc(sizeof(list_t));
-   list_initialize(dfa_node->edges, list_default_destructor);
+   list_initialize(dfa_node->edges, NULL);
 
    // Determine if dfa_node is accepting
    list_node_t* current;
@@ -295,13 +295,11 @@ void free_dfa(dfa_t* dfa) {
    free(dfa);
 }
 
-static void free_dfa_list_node(list_node_t* list_node) {
-   dfa_node_t* node = (dfa_node_t*)list_node->data;
+static void free_dfa_list_node(void* data) {
+   dfa_node_t* node = (dfa_node_t*)data;
    free(node->id);
    list_release(node->edges);
-
    free(node);
-   free(list_node);
 }
 
 static void free_epsilon_closure(epsilon_closure_t* epsilon_closure) {

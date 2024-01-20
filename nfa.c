@@ -8,7 +8,7 @@
 static int node_id = 0;
 
 static void nodes_traverse(nfa_node_t* node, on_node_f, list_t* seen_nodes);
-static void free_list_node(list_node_t* list_node);
+static void free_nfa_list_node(void*);
 static void log_node(nfa_node_t* node);
 
 static void* xmalloc(size_t size) {
@@ -26,7 +26,7 @@ nfa_t* new_nfa() {
    nfa->end = NULL;
 
    nfa->__nodes = (list_t*)malloc(sizeof(list_t));
-   list_initialize(nfa->__nodes, free_list_node);
+   list_initialize(nfa->__nodes, free_nfa_list_node);
 
    return nfa;
 }
@@ -123,15 +123,14 @@ static void nodes_traverse(nfa_node_t* node, on_node_f on_node, list_t* seen_nod
    }
 }
 
-static void free_list_node(list_node_t* list_node) {
-   nfa_node_t* node = (nfa_node_t*)list_node->data;
+static void free_nfa_list_node(void* data) {
+   nfa_node_t* node = (nfa_node_t*)data;
    // printf("freeing node %d\n", node->id);
    if (node->edges != NULL) {
       free(node->edges);
    }
    // printf("freed node\n");
    free(node);
-   free(list_node);
 }
 
 void log_nfa(nfa_t* nfa) {
