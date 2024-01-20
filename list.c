@@ -6,10 +6,11 @@
 
 static int default_comparator(void* data1, void* data2);
 
-void list_initialize(list_t* list, void (*destructor)(list_node_t*)) {
+// If destructor is null, use the default (free node data and node)
+void list_initialize(list_t* list, list_destructor_t destructor) {
    list->head = NULL;
    list->tail = NULL;
-   list->destructor = destructor;
+   list->destructor = destructor == NULL ? list_default_destructor : destructor;
 }
 
 int list_size(list_t* list) {
@@ -109,27 +110,24 @@ void list_release(list_t* list) {
       return;
    }
 
-   void (*destructor)(list_node_t*) = list->destructor ? list->destructor : list_default_destructor;
    list_node_t* current = list->head;
    list_node_t* next;
 
    while (current != NULL) {
       next = current->next;
-      destructor(current);
+      list->destructor(current->data);
+      free(current);
       current = next;
    }
 
    free(list);
 }
 
-// Default destructor for list nodes (free the data and the node)
-void list_default_destructor(list_node_t* node) {
-   free(node->data);
-   free(node);
-}
+// Default destructor for data of list nodes
+void list_default_destructor(void* data) { free(data); }
 
-// Destructor for list nodes that frees the node only but not the data
-void list_noop_data_destructor(list_node_t* node) { free(node); }
+// Destructor that doesn't free the node data
+void list_noop_data_destructor(void* data) {}
 
 static int default_comparator(void* data1, void* data2) {
    if (data1 == data2) return 0;

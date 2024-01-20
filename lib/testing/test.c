@@ -43,7 +43,7 @@ static test_runner_t* test_runner_new(const char*);
 static void test_run_all(test_runner_t*);
 
 static void test_runner_release(test_runner_t*);
-static void test_case_release(list_node_t*);
+static void test_case_release(void*);
 
 void __register_test(const char* name, test_func_t func, const char* filename) {
    test_case_t* test_case = (test_case_t*)malloc(sizeof(test_case_t));
@@ -53,7 +53,7 @@ void __register_test(const char* name, test_func_t func, const char* filename) {
 
    // Test results
    test_case->test_results = (list_t*)malloc(sizeof(list_t));
-   list_initialize(test_case->test_results, list_default_destructor);
+   list_initialize(test_case->test_results, NULL);
 
    list_push(runner->test_cases, test_case);
 }
@@ -108,11 +108,10 @@ static void test_runner_release(test_runner_t* test_runner) {
    free(test_runner);
 }
 
-static void test_case_release(list_node_t* test_case_node) {
-   test_case_t* test_case = (test_case_t*)test_case_node->data;
+static void test_case_release(void* data) {
+   test_case_t* test_case = (test_case_t*)data;
    list_release(test_case->test_results);
    free(test_case);
-   free(test_case_node);
 }
 
 static void test_run_all(test_runner_t* runner) {
