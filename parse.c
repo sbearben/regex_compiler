@@ -22,6 +22,11 @@
 
 #include "utils.h"
 
+#define LITERAL_START 32
+#define LITERAL_END 126
+
+const int NUM_LITERALS = LITERAL_END - LITERAL_START;
+
 /**
  * Improvement ideas:
  * - Instead of `start` on nfa be a node, make it an edge that points to the start node
@@ -34,6 +39,13 @@ typedef struct state {
       const char* pattern;
       char* current;
 } state_t;
+
+typedef enum CharacterClass { ANY } CharClass_t;
+
+typedef enum ChracterConfigColumn {
+   SPECIAL_CHARACTER = 0,
+   QUANTIFIER_SYMBOL = 1,
+} CCCol_t;
 
 static char peek(state_t*);
 static void match(state_t*, char);
@@ -52,10 +64,8 @@ static nfa_t* new_min_one_repetition_nfa(nfa_t*);  // 'a+'
 static nfa_t* new_optional_nfa(nfa_t*);            // 'a?'
 static nfa_t* new_literal_nfa(char);               // 'a'
 
-typedef enum ChracterConfigColumn {
-   SPECIAL_CHARACTER = 0,
-   QUANTIFIER_SYMBOL = 1,
-} CCCol_t;
+// Chracter classes
+static nfa_t* new_character_class(CharClass_t);
 
 /**
  * ascii table from 32 to 126 
@@ -164,11 +174,11 @@ const int CHARACTER_CONFIG[][2] = {
 };
 
 int get_character_config(char c, CCCol_t col) {
-   if (c < 32 || c > 126) {
+   if (c < LITERAL_START || c > LITERAL_END) {
       // Null character can cause problems, return a value that will fail a `== true` or `== false` check.
       return -1;
    }
-   return CHARACTER_CONFIG[(int)c - 32][col];
+   return CHARACTER_CONFIG[(int)c - LITERAL_START][col];
 }
 
 static int is_special_character(char c) { return get_character_config(c, SPECIAL_CHARACTER); }
@@ -281,7 +291,7 @@ static nfa_t* factor(state_t* state) {
       temp = new_literal_nfa(value);
    } else if (peek(state) == '.') {
       match(state, '.');
-      temp = parse_regex_to_nfa("a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z| ");
+      temp = new_character_class(ANY);
    } else {
       error("[factor] Unexpected token");
    }
@@ -478,4 +488,33 @@ static nfa_t* new_literal_nfa(char value) {
    nfa_set_start_end(nfa, start_node, end_node);
 
    return nfa;
+}
+
+static nfa_t* new_character_class(CharClass_t cctype) {
+   // '.' matches any single character except line terminators \n, \r (but includes tabs)
+   // - multiply by 3 just to overallocate space for characters that require escaping,
+   //   as well as for joining pipe characters
+   static char any_cc_regex_string[NUM_LITERALS * 3] = {0};
+
+   switch (cctype) {
+      case ANY:
+         if (any_cc_regex_string[0] == 0) {
+            int index_offset = 0;
+            for (char cl = 0; cl < NUM_LITERALS; cl++) {
+               if (is_special_character(cl + LITERAL_START) == true) {
+                  any_cc_regex_string[index_offset++] = '\\';
+               }
+               any_cc_regex_string[index_offset++] = cl + LITERAL_START;
+               any_cc_regex_string[index_offset++] = '|';
+            }
+            any_cc_regex_string[index_offset++] = '\\';
+            any_cc_regex_string[index_offset++] = 't';
+            any_cc_regex_string[index_offset] = '\0';
+            printf("Generated any character regex string: '%s'\n", any_cc_regex_string);
+         }
+         return parse_regex_to_nfa(any_cc_regex_string);
+      default:
+         error("[new_character_class] unexpected character class");
+   }
+   return NULL;
 }
