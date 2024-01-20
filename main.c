@@ -10,7 +10,7 @@
 // 2. [DONE] Change how nfa consumes the input stream of regex
 // 3. [DONE] Rename regex.c/regex.h to something that doens't conflict with the POSIX regex.h
 // 4. Add more regex functions (find all matches in input string, etc.);
-// 5. Check for memory leaks?
+// 5. [DONE - fixed leaks] Check for memory leaks?
 // 6. [DONE] Add tests
 // 7. Use this to generate a lexical-analyzer generator?
 // 8. Try DFA minimization?

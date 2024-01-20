@@ -110,6 +110,7 @@ dfa_t* dfa_from_nfa(nfa_t* nfa) {
          free(next_dfa_node_id);
          list_release(move_result);
       };
+      free_epsilon_closure(current_closure);
       list_release(transitions);
    }
    list_release(eclosures_stack);
