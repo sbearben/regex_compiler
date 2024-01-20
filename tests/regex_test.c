@@ -130,9 +130,35 @@ TEST_CASE(regex_matches_escape_characters) {
    regex_release(regex);
 }
 
+TEST_CASE(regex_works_with_the_any_character_class) {
+   // First
+   regex_t* regex = new_regex("(hey )?do you like foo.*\\?");
+
+   assert_true(regex_accepts(regex, "hey do you like foo?"));
+   assert_true(regex_accepts(regex, "do you like foo?"));
+   assert_true(regex_accepts(regex, "do you like food?"));
+   assert_true(regex_accepts(regex, "do you like football?"));
+   assert_true(regex_accepts(regex, "hey do you like food and eating out?"));
+
+   regex_release(regex);
+
+   // Second
+   regex = new_regex("import \\{.*,? doThis.* \\} from \\\"some-package\\\";");
+
+   assert_true(regex_accepts(regex, "import { doThis } from \"some-package\";"));
+   assert_true(regex_accepts(regex, "import { doThis, doThat } from \"some-package\";"));
+   assert_true(regex_accepts(regex, "import { doOther, doThis, doThat } from \"some-package\";"));
+
+   assert_false(regex_accepts(regex, "import { doThat } from \"some-package\""));
+   assert_false(regex_accepts(regex, "import { doThat, doOther } from \"some-package\""));
+
+   regex_release(regex);
+}
+
 void on_register_tests(void) {
    REGISTER_TEST(regex_accepts_matches_exactly);
    REGISTER_TEST(regex_matches_quantifiers);
    REGISTER_TEST(regex_test_matches_any_substring);
    REGISTER_TEST(regex_matches_escape_characters);
+   REGISTER_TEST(regex_works_with_the_any_character_class);
 }
