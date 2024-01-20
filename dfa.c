@@ -197,7 +197,7 @@ dfa_node_t* dfa_node_from_epsilon_closure(epsilon_closure_t* epsilon_closure) {
    strcpy(dfa_node->id, epsilon_closure->id);
    dfa_node->is_accepting = false;
    dfa_node->edges = (list_t*)malloc(sizeof(list_t));
-   list_initialize(dfa_node->edges, list_noop_data_destructor);
+   list_initialize(dfa_node->edges, list_default_destructor);
 
    // Determine if dfa_node is accepting
    list_node_t* current;
