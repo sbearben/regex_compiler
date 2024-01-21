@@ -10,7 +10,10 @@ typedef struct nfa_edge nfa_edge_t;
 struct nfa {
       nfa_node_t* start;
       nfa_node_t* end;
+      // List of all nodes in this NFA
       list_t* __nodes;
+      // Character set for this NFA
+      char* __language;
 };
 
 struct nfa_node {
@@ -36,6 +39,7 @@ nfa_edge_t* new_edges(int);
 void node_set_edges(nfa_node_t*, nfa_edge_t*, int);
 void init_epsilon(nfa_edge_t*);
 int nfa_num_states(nfa_t*);
+char* nfa_language(nfa_t*);
 
 // Destructors
 void free_nfa(nfa_t*);

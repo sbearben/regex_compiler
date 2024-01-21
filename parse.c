@@ -485,7 +485,6 @@ static nfa_t* new_character_class(CharClass_t cctype) {
             any_cc_regex_string[index_offset++] = '\\';
             any_cc_regex_string[index_offset++] = 't';
             any_cc_regex_string[index_offset] = '\0';
-            printf("Generated any character regex string: '%s'\n", any_cc_regex_string);
          }
          return parse_regex_to_nfa(any_cc_regex_string);
       default:
