@@ -42,7 +42,6 @@ static dfa_node_t* dfa_node_from_epsilon_closure(epsilon_closure_t*);
 static dfa_node_t* dfa_find_node(dfa_t*, char*);
 static void dfa_node_add_edge(dfa_node_t*, char, dfa_node_t*);
 static char* create_id_for_set(list_t*);
-static list_t* compute_transition_symbols(epsilon_closure_t*);
 static list_t* compute_move_set(list_t*, char);
 
 static void free_dfa_list_node(void*);
@@ -93,19 +92,17 @@ dfa_t* dfa_from_nfa(nfa_t* nfa) {
    list_push(dfa->__nodes, initial_dfa_node);
    dfa->start = initial_dfa_node;
 
-   dfa_node_t* current_dfa_node;
-   epsilon_closure_t* current_closure;
+   char* language = nfa_language(nfa);
+
    while (!list_empty(eclosures_stack)) {
       // Have to free current_closure since it's being removed from list
-      current_closure = (epsilon_closure_t*)list_deque(eclosures_stack);
-      current_dfa_node = dfa_find_node(dfa, current_closure->id);
+      epsilon_closure_t* current_closure = (epsilon_closure_t*)list_deque(eclosures_stack);
+      dfa_node_t* current_dfa_node = dfa_find_node(dfa, current_closure->id);
       assert(current_dfa_node != NULL);
 
-      list_t* transitions = compute_transition_symbols(current_closure);
-
-      list_node_t* current_symbol_node;
-      list_traverse(transitions, current_symbol_node) {
-         char transition_symbol = (char)current_symbol_node->data;
+      char* lptr = language;
+      while (*lptr) {
+         char transition_symbol = *lptr++;
 
          // Get/create dfa_node and add edge from current_dfa_node to next_dfa_node
          list_t* move_result = compute_move_set(current_closure->nodes, transition_symbol);
@@ -126,7 +123,6 @@ dfa_t* dfa_from_nfa(nfa_t* nfa) {
          list_release(move_result);
       };
       free_epsilon_closure(current_closure);
-      list_release(transitions);
    }
    list_release(eclosures_stack);
 
@@ -263,24 +259,6 @@ static char* create_id_for_set(list_t* nfa_nodes) {
    }
 
    return id;
-}
-
-static list_t* compute_transition_symbols(epsilon_closure_t* closure) {
-   list_t* symbols = (list_t*)malloc(sizeof(list_t));
-   list_initialize(symbols, list_noop_data_destructor);
-
-   list_node_t* current;
-   list_traverse(closure->nodes, current) {
-      nfa_node_t* node = (nfa_node_t*)current->data;
-      for (int i = 0; i < node->num_edges; i++) {
-         if (!node->edges[i].is_epsilon &&
-             !list_contains(symbols, (void*)node->edges[i].value, NULL)) {
-            list_push(symbols, (void*)node->edges[i].value);
-         }
-      }
-   }
-
-   return symbols;
 }
 
 static list_t* compute_move_set(list_t* nfa_nodes, char symbol) {

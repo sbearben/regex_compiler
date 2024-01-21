@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 static int node_id = 0;
 
@@ -24,6 +25,7 @@ nfa_t* new_nfa() {
    nfa_t* nfa = (nfa_t*)xmalloc(sizeof(nfa_t));
    nfa->start = NULL;
    nfa->end = NULL;
+   nfa->__language = NULL;
 
    nfa->__nodes = (list_t*)malloc(sizeof(list_t));
    list_initialize(nfa->__nodes, free_nfa_list_node);
@@ -94,9 +96,44 @@ void init_epsilon(nfa_edge_t* edge) {
 
 int nfa_num_states(nfa_t* nfa) { return list_size(nfa->__nodes); }
 
+char* nfa_language(nfa_t* nfa) {
+   if (nfa->__language != NULL) {
+      return nfa->__language;
+   }
+
+   static char seen_characters[128];
+   memset(seen_characters, 0, sizeof seen_characters);
+
+   nfa->__language = (char*)malloc(128);
+   int lang_index = 0;
+   char edge_value = '\0';
+
+   list_node_t* current;
+   list_traverse(nfa->__nodes, current) {
+      nfa_node_t* nfa_node = (nfa_node_t*)current->data;
+      for (int i = 0; i < nfa_node->num_edges; i++) {
+         if (nfa_node->edges[i].is_epsilon) {
+            continue;
+         }
+
+         edge_value = nfa_node->edges[i].value;
+         if (seen_characters[(int)edge_value] == 0) {
+            nfa->__language[lang_index++] = edge_value;
+            seen_characters[(int)edge_value] = 1;
+         }
+      }
+   }
+   nfa->__language[lang_index] = '\0';
+
+   return nfa->__language;
+}
+
 void free_nfa(nfa_t* nfa) {
    // Releaase all nodes in the nfa
    list_release(nfa->__nodes);
+   if (nfa->__language != NULL) {
+      free(nfa->__language);
+   }
    free(nfa);
 }
 

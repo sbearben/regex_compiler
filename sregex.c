@@ -63,8 +63,8 @@ static dfa_t* regex_parse(char* pattern) {
    dfa_t* dfa = dfa_from_nfa(nfa);
    free_nfa(nfa);
 
-   printf("\n");
-   log_dfa(dfa);
+   // printf("\n");
+   // log_dfa(dfa);
 
    return dfa;
 }
