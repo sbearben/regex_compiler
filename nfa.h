@@ -39,7 +39,13 @@ nfa_edge_t* new_edges(int);
 void node_set_edges(nfa_node_t*, nfa_edge_t*, int);
 void init_epsilon(nfa_edge_t*);
 int nfa_num_states(nfa_t*);
+// Returns the language of the nfa
 char* nfa_language(nfa_t*);
+/**
+ * Finds the edge of the nfa_node with a transtion on the given character.
+ * @returns null if no edge with a transition on the character is found
+ **/
+nfa_edge_t* nfa_node_find_transition(nfa_node_t*, char);
 
 // Destructors
 void free_nfa(nfa_t*);
