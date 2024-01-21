@@ -8,11 +8,26 @@
 
 #include "utils.h"
 
+struct dfa {
+      dfa_node_t* start;
+      list_t* __nodes;
+};
+
+struct dfa_node {
+      char* id;
+      bool is_accepting;
+      list_t* edges;
+};
+
+struct dfa_edge {
+      char value;
+      dfa_node_t* to;
+};
+
 /**
  * Note: Any list that holds a copy of a pointer uses list_noop_data_destructor as the destructor.
  * In terms of nfa_nodes, the nfa is the owner of all nodes (an eclosure never does).
  */
-
 typedef struct epsilon_closure {
       char* id;
       list_t* nodes;  // list of nfa_node_t
