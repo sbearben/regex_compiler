@@ -66,13 +66,19 @@ static nfa_t* new_literal_nfa(char);               // 'a'
 // Chracter classes
 static nfa_t* new_character_class(CharClass_t);
 
+// Character helpers
+static int get_character_config(char, CCCol_t);
+static int is_special_character(char);
+static int is_quantifier_symbol(char);
+static char get_escaped_character(char);
+static bool in_factor_first_set(char);
+
 /**
  * ascii table from 32 to 126 
  * Values represent (
  *    special_character: bool,
  *    quantifier_symbol: bool
  * )
- 
 */
 const int CHARACTER_CONFIG[][2] = {
     /* ' ' */ {0, 0},
@@ -171,36 +177,6 @@ const int CHARACTER_CONFIG[][2] = {
     /* '}' */ {0, 0},
     /* '~' */ {0, 0},
 };
-
-int get_character_config(char c, CCCol_t col) {
-   if (c < LITERAL_START || c > LITERAL_END) {
-      // Null character can cause problems, return a value that will fail a `== true` or `== false` check.
-      return -1;
-   }
-   return CHARACTER_CONFIG[(int)c - LITERAL_START][col];
-}
-
-static int is_special_character(char c) { return get_character_config(c, SPECIAL_CHARACTER); }
-
-static int is_quantifier_symbol(char c) { return get_character_config(c, QUANTIFIER_SYMBOL); }
-
-static char get_escaped_character(char c) {
-   switch (c) {
-      case 't':
-         return '\t';
-      case 'n':
-         return '\n';
-      case 'r':
-         return '\r';
-      default:
-         return c;
-   }
-}
-
-// Whether the character is in the first set of 'factor'
-static bool in_factor_first_set(char c) {
-   return is_special_character(c) == false || c == '(' || c == '\\' || c == '.';
-}
 
 /**
  * Parser
@@ -516,4 +492,38 @@ static nfa_t* new_character_class(CharClass_t cctype) {
          error("[new_character_class] unexpected character class");
    }
    return NULL;
+}
+
+/**
+ * Character helpers
+*/
+
+static int get_character_config(char c, CCCol_t col) {
+   if (c < LITERAL_START || c > LITERAL_END) {
+      // Null character can cause problems, return a value that will fail a `== true` or `== false` check.
+      return -1;
+   }
+   return CHARACTER_CONFIG[(int)c - LITERAL_START][col];
+}
+
+static int is_special_character(char c) { return get_character_config(c, SPECIAL_CHARACTER); }
+
+static int is_quantifier_symbol(char c) { return get_character_config(c, QUANTIFIER_SYMBOL); }
+
+static char get_escaped_character(char c) {
+   switch (c) {
+      case 't':
+         return '\t';
+      case 'n':
+         return '\n';
+      case 'r':
+         return '\r';
+      default:
+         return c;
+   }
+}
+
+// Whether the character is in the first set of 'factor'
+static bool in_factor_first_set(char c) {
+   return is_special_character(c) == false || c == '(' || c == '\\' || c == '.';
 }
