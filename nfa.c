@@ -128,10 +128,10 @@ char* nfa_language(nfa_t* nfa) {
    return nfa->__language;
 }
 
-nfa_edge_t* nfa_node_find_transition(nfa_node_t* nfa_node, char ch) {
+nfa_node_t* nfa_node_find_transition(nfa_node_t* nfa_node, char ch) {
    for (int i = 0; i < nfa_node->num_edges; i++) {
       if (nfa_node->edges[i].value == ch) {
-         return &nfa_node->edges[i];
+         return nfa_node->edges[i].to;
       }
    }
    return NULL;

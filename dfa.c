@@ -267,9 +267,9 @@ static list_t* compute_move_set(list_t* nfa_nodes, char symbol) {
 
    list_node_t* current;
    list_traverse(nfa_nodes, current) {
-      nfa_edge_t* nfa_edge = nfa_node_find_transition((nfa_node_t*)current->data, symbol);
-      if (nfa_edge != NULL) {
-         list_push(nfa_nodes_with_transition, nfa_edge->to);
+      nfa_node_t* to_nfa_node = nfa_node_find_transition((nfa_node_t*)current->data, symbol);
+      if (to_nfa_node != NULL) {
+         list_push(nfa_nodes_with_transition, to_nfa_node);
       }
    }
 
