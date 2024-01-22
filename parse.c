@@ -45,8 +45,9 @@ typedef struct state {
 typedef enum CharacterClass { ANY } CharClass_t;
 
 typedef enum ChracterConfigColumn {
-   SPECIAL_CHARACTER = 0,
-   QUANTIFIER_SYMBOL = 1,
+   VALID_CHARACTER = 0,
+   SPECIAL_CHARACTER = 1,
+   QUANTIFIER_SYMBOL = 2,
 } CCCol_t;
 
 static char peek(state_t*);
@@ -71,8 +72,8 @@ static nfa_t* new_character_class(CharClass_t);
 static nfa_t* new_nfa_from_character_set(char*);
 
 // Character helpers
-static int allowed_character(char);
 static int get_character_config(char, CCCol_t);
+static int is_valid_character(char);
 static int is_special_character(char);
 static int is_quantifier_symbol(char);
 static char get_escaped_character(char);
@@ -85,102 +86,135 @@ static bool in_factor_first_set(char);
  *    quantifier_symbol: bool
  * )
 */
-const int CHARACTER_CONFIG[][2] = {
-    /* ' ' */ {0, 0},
-    /* '!' */ {0, 0},
-    /* '"' */ {1, 0},
-    /* '#' */ {0, 0},
-    /* '$' */ {0, 0},
-    /* '%' */ {0, 0},
-    /* '&' */ {0, 0},
-    /* ''' */ {0, 0},
-    /* '(' */ {1, 0},
-    /* ')' */ {1, 0},
-    /* '*' */ {1, 1},
-    /* '+' */ {1, 1},
-    /* ',' */ {0, 0},
-    /* '-' */ {0, 0},
-    /* '.' */ {1, 0},
-    /* '/' */ {0, 0},
-    /* '0' */ {0, 0},
-    /* '1' */ {0, 0},
-    /* '2' */ {0, 0},
-    /* '3' */ {0, 0},
-    /* '4' */ {0, 0},
-    /* '5' */ {0, 0},
-    /* '6' */ {0, 0},
-    /* '7' */ {0, 0},
-    /* '8' */ {0, 0},
-    /* '9' */ {0, 0},
-    /* ':' */ {0, 0},
-    /* ';' */ {0, 0},
-    /* '<' */ {0, 0},
-    /* '=' */ {0, 0},
-    /* '>' */ {0, 0},
-    /* '?' */ {1, 1},
-    /* '@' */ {0, 0},
-    /* 'A' */ {0, 0},
-    /* 'B' */ {0, 0},
-    /* 'C' */ {0, 0},
-    /* 'D' */ {0, 0},
-    /* 'E' */ {0, 0},
-    /* 'F' */ {0, 0},
-    /* 'G' */ {0, 0},
-    /* 'H' */ {0, 0},
-    /* 'I' */ {0, 0},
-    /* 'J' */ {0, 0},
-    /* 'K' */ {0, 0},
-    /* 'L' */ {0, 0},
-    /* 'M' */ {0, 0},
-    /* 'N' */ {0, 0},
-    /* 'O' */ {0, 0},
-    /* 'P' */ {0, 0},
-    /* 'Q' */ {0, 0},
-    /* 'R' */ {0, 0},
-    /* 'S' */ {0, 0},
-    /* 'T' */ {0, 0},
-    /* 'U' */ {0, 0},
-    /* 'V' */ {0, 0},
-    /* 'W' */ {0, 0},
-    /* 'X' */ {0, 0},
-    /* 'Y' */ {0, 0},
-    /* 'Z' */ {0, 0},
-    /* '[' */ {1, 0},
-    /* '\' */ {1, 0},
-    /* ']' */ {1, 0},
-    /* '^' */ {0, 0},
-    /* '_' */ {0, 0},
-    /* '`' */ {0, 0},
-    /* 'a' */ {0, 0},
-    /* 'b' */ {0, 0},
-    /* 'c' */ {0, 0},
-    /* 'd' */ {0, 0},
-    /* 'e' */ {0, 0},
-    /* 'f' */ {0, 0},
-    /* 'g' */ {0, 0},
-    /* 'h' */ {0, 0},
-    /* 'i' */ {0, 0},
-    /* 'j' */ {0, 0},
-    /* 'k' */ {0, 0},
-    /* 'l' */ {0, 0},
-    /* 'm' */ {0, 0},
-    /* 'n' */ {0, 0},
-    /* 'o' */ {0, 0},
-    /* 'p' */ {0, 0},
-    /* 'q' */ {0, 0},
-    /* 'r' */ {0, 0},
-    /* 's' */ {0, 0},
-    /* 't' */ {0, 0},
-    /* 'u' */ {0, 0},
-    /* 'v' */ {0, 0},
-    /* 'w' */ {0, 0},
-    /* 'x' */ {0, 0},
-    /* 'y' */ {0, 0},
-    /* 'z' */ {0, 0},
-    /* '{' */ {0, 0},
-    /* '|' */ {1, 0},
-    /* '}' */ {0, 0},
-    /* '~' */ {0, 0},
+const int CHARACTER_CONFIG[][3] = {
+    // Null character can cause problems, return a value that will fail a `== true` or `== false` check.
+    {-1, -1, -1}, /* '\0' */
+    {0, 0, 0},    /* 'SOH' */
+    {0, 0, 0},    /* 'STX' */
+    {0, 0, 0},    /* 'ETX' */
+    {0, 0, 0},    /* 'EOT' */
+    {0, 0, 0},    /* 'ENQ' */
+    {0, 0, 0},    /* 'ACK' */
+    {0, 0, 0},    /* 'BEL' */
+    {0, 0, 0},    /* 'BS' */
+    {1, 0, 0},    /* '\t' */
+    {1, 0, 0},    /* '\n' */
+    {0, 0, 0},    /* 'VT' */
+    {0, 0, 0},    /* 'FF' */
+    {1, 0, 0},    /* '\r' */
+    {0, 0, 0},    /* 'SO' */
+    {0, 0, 0},    /* 'SI' */
+    {0, 0, 0},    /* 'DLE' */
+    {0, 0, 0},    /* 'DC1' */
+    {0, 0, 0},    /* 'DC2' */
+    {0, 0, 0},    /* 'DC3' */
+    {0, 0, 0},    /* 'DC4' */
+    {0, 0, 0},    /* 'NAK' */
+    {0, 0, 0},    /* 'SYN' */
+    {0, 0, 0},    /* 'ETB' */
+    {0, 0, 0},    /* 'CAN' */
+    {0, 0, 0},    /* 'EM' */
+    {0, 0, 0},    /* 'SUB' */
+    {0, 0, 0},    /* 'ESC' */
+    {0, 0, 0},    /* 'FS' */
+    {0, 0, 0},    /* 'GS' */
+    {0, 0, 0},    /* 'RS' */
+    {0, 0, 0},    /* 'US' */
+    {1, 0, 0},    /* ' ' */
+    {1, 0, 0},    /* '!' */
+    {1, 1, 0},    /* '"' */
+    {1, 0, 0},    /* '#' */
+    {1, 0, 0},    /* '$' */
+    {1, 0, 0},    /* '%' */
+    {1, 0, 0},    /* '&' */
+    {1, 0, 0},    /* ''' */
+    {1, 1, 0},    /* '(' */
+    {1, 1, 0},    /* ')' */
+    {1, 1, 1},    /* '*' */
+    {1, 1, 1},    /* '+' */
+    {1, 0, 0},    /* ',' */
+    {1, 0, 0},    /* '-' */
+    {1, 1, 0},    /* '.' */
+    {1, 0, 0},    /* '/' */
+    {1, 0, 0},    /* '0' */
+    {1, 0, 0},    /* '1' */
+    {1, 0, 0},    /* '2' */
+    {1, 0, 0},    /* '3' */
+    {1, 0, 0},    /* '4' */
+    {1, 0, 0},    /* '5' */
+    {1, 0, 0},    /* '6' */
+    {1, 0, 0},    /* '7' */
+    {1, 0, 0},    /* '8' */
+    {1, 0, 0},    /* '9' */
+    {1, 0, 0},    /* ':' */
+    {1, 0, 0},    /* ';' */
+    {1, 0, 0},    /* '<' */
+    {1, 0, 0},    /* '=' */
+    {1, 0, 0},    /* '>' */
+    {1, 1, 1},    /* '?' */
+    {1, 0, 0},    /* '@' */
+    {1, 0, 0},    /* 'A' */
+    {1, 0, 0},    /* 'B' */
+    {1, 0, 0},    /* 'C' */
+    {1, 0, 0},    /* 'D' */
+    {1, 0, 0},    /* 'E' */
+    {1, 0, 0},    /* 'F' */
+    {1, 0, 0},    /* 'G' */
+    {1, 0, 0},    /* 'H' */
+    {1, 0, 0},    /* 'I' */
+    {1, 0, 0},    /* 'J' */
+    {1, 0, 0},    /* 'K' */
+    {1, 0, 0},    /* 'L' */
+    {1, 0, 0},    /* 'M' */
+    {1, 0, 0},    /* 'N' */
+    {1, 0, 0},    /* 'O' */
+    {1, 0, 0},    /* 'P' */
+    {1, 0, 0},    /* 'Q' */
+    {1, 0, 0},    /* 'R' */
+    {1, 0, 0},    /* 'S' */
+    {1, 0, 0},    /* 'T' */
+    {1, 0, 0},    /* 'U' */
+    {1, 0, 0},    /* 'V' */
+    {1, 0, 0},    /* 'W' */
+    {1, 0, 0},    /* 'X' */
+    {1, 0, 0},    /* 'Y' */
+    {1, 0, 0},    /* 'Z' */
+    {1, 1, 0},    /* '[' */
+    {1, 1, 0},    /* '\' */
+    {1, 1, 0},    /* ']' */
+    {1, 0, 0},    /* '^' */
+    {1, 0, 0},    /* '_' */
+    {1, 0, 0},    /* '`' */
+    {1, 0, 0},    /* 'a' */
+    {1, 0, 0},    /* 'b' */
+    {1, 0, 0},    /* 'c' */
+    {1, 0, 0},    /* 'd' */
+    {1, 0, 0},    /* 'e' */
+    {1, 0, 0},    /* 'f' */
+    {1, 0, 0},    /* 'g' */
+    {1, 0, 0},    /* 'h' */
+    {1, 0, 0},    /* 'i' */
+    {1, 0, 0},    /* 'j' */
+    {1, 0, 0},    /* 'k' */
+    {1, 0, 0},    /* 'l' */
+    {1, 0, 0},    /* 'm' */
+    {1, 0, 0},    /* 'n' */
+    {1, 0, 0},    /* 'o' */
+    {1, 0, 0},    /* 'p' */
+    {1, 0, 0},    /* 'q' */
+    {1, 0, 0},    /* 'r' */
+    {1, 0, 0},    /* 's' */
+    {1, 0, 0},    /* 't' */
+    {1, 0, 0},    /* 'u' */
+    {1, 0, 0},    /* 'v' */
+    {1, 0, 0},    /* 'w' */
+    {1, 0, 0},    /* 'x' */
+    {1, 0, 0},    /* 'y' */
+    {1, 0, 0},    /* 'z' */
+    {1, 0, 0},    /* '{' */
+    {1, 1, 0},    /* '|' */
+    {1, 0, 0},    /* '}' */
+    {1, 0, 0},    /* '~' */
 };
 
 /**
@@ -293,7 +327,7 @@ static nfa_t* range(state_t* state) {
    // - if negation is implemented ('^'), then we need to handle escaping it to match '^' literally
    //   - seems it only needs to be escaped if it is the first character in the range
    //   - seems anything can be escaped and it's just treated as a literal
-   while (allowed_character(peek(state))) {
+   while (is_valid_character(peek(state))) {
       char start = next(state);
       if (peek(state) == '-') {
          match(state, '-');
@@ -565,20 +599,14 @@ static nfa_t* new_nfa_from_character_set(char* characters) {
  * Character helpers
 */
 
-static int allowed_character(char c) {
-   if ((c >= LITERAL_START && c <= LITERAL_END) || c == '\t' || c == '\n' || c == '\r') {
-      return 1;
-   }
-   return 0;
-}
-
 static int get_character_config(char c, CCCol_t col) {
-   if (!allowed_character(c)) {
-      // Null character can cause problems, return a value that will fail a `== true` or `== false` check.
+   if (c < 0 || c > LITERAL_END) {
       return -1;
    }
-   return CHARACTER_CONFIG[(int)c - LITERAL_START][col];
+   return CHARACTER_CONFIG[(int)c][col];
 }
+
+static int is_valid_character(char c) { return get_character_config(c, VALID_CHARACTER); }
 
 static int is_special_character(char c) { return get_character_config(c, SPECIAL_CHARACTER); }
 
