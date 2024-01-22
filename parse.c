@@ -321,10 +321,16 @@ static nfa_t* range(state_t* state) {
    static char seen_characters[ASCII_SIZE];
    memset(seen_characters, 0, sizeof seen_characters);
    int max_character_count = 0;
+   int range_negated = 0;
 
    // TODO: - if negation is implemented ('^'), then we need to handle escaping it to match '^' literally
    //       - seems it only needs to be escaped if it is the first character in the range
    //       - seems anything can be escaped and it's just treated as a literal
+   if (peek(state) == '^') {
+      match(state, '^');
+      range_negated = 1;
+   }
+
    while (peek(state) != ']') {
       char start = next(state);
       if (peek(state) == '-') {
@@ -346,10 +352,22 @@ static nfa_t* range(state_t* state) {
       }
    }
 
+   if (range_negated == 1) {
+      max_character_count = 0;
+      for (int i = 0; i < ASCII_SIZE; i++) {
+         if (is_valid_character((char)i) == true) {
+            seen_characters[i] = seen_characters[i] == 0 ? 1 : 0;
+            if (seen_characters[i] == 1) {
+               max_character_count++;
+            }
+         }
+      }
+   }
+
    // Create nfa from seen characters
    char* characters = (char*)xmalloc((MIN(max_character_count, ASCII_SIZE) + 1) * sizeof(char));
    int ch_index = 0;
-   for (int i = 0; i < sizeof seen_characters; i++) {
+   for (int i = 0; i < ASCII_SIZE; i++) {
       if (seen_characters[i] == 1) {
          characters[ch_index++] = i;
       }

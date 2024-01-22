@@ -156,6 +156,7 @@ TEST_CASE(regex_works_with_the_any_character_class) {
 }
 
 TEST_CASE(regex_works_with_character_ranges) {
+   // First
    regex_t* regex = new_regex("[a-z]+( [a-z]+)*\\.?");
 
    assert_true(regex_accepts(regex, "hello"));
@@ -165,6 +166,31 @@ TEST_CASE(regex_works_with_character_ranges) {
    assert_false(regex_accepts(regex, "I am writing a sentence."));
    assert_false(regex_accepts(regex, "HELLO"));
    assert_false(regex_accepts(regex, "HELLO WORLD"));
+
+   regex_release(regex);
+
+   // Second
+   regex = new_regex("[a-zA-Z][a-zA-Z0-9_]*");
+
+   assert_true(regex_accepts(regex, "hello"));
+   assert_true(regex_accepts(regex, "Hello"));
+   assert_true(regex_accepts(regex, "hello_world"));
+   assert_true(regex_accepts(regex, "hello_world_123"));
+
+   assert_false(regex_accepts(regex, "hello world"));
+   assert_false(regex_accepts(regex, "1hello_world_123"));
+
+   regex_release(regex);
+
+   // Third
+   regex = new_regex("[^abc][^a-z]*");
+
+   assert_true(regex_accepts(regex, "dA0"));
+   assert_true(regex_accepts(regex, "dA0!@#$%^&*()_+"));
+   assert_true(regex_accepts(regex, "0000AAAAA"));
+
+   assert_false(regex_accepts(regex, "abc"));
+   assert_false(regex_accepts(regex, "zbba"));
 
    regex_release(regex);
 }
