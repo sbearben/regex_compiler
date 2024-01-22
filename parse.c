@@ -5,7 +5,8 @@
  * <regexp> -> <concat> { "|" <concat> }
  * <concat> -> <quantifier> { <quantifier> }
  * <quantifier> -> <factor> [ <quantifier-symbol> ]
- * <factor> ( <regexp> ) | Letter
+ * <factor> ( <regexp> ) | Letter | \[<range>\]
+ * <range> -> Letter [ - Letter ] <range>
  * <quantifier-symbol> -> * | + | ?
  * 
  * Inputs a line of text from stdin
@@ -19,13 +20,15 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "utils.h"
 
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define LITERAL_START 32
 #define LITERAL_END 126
 
-const int NUM_LITERALS = LITERAL_END - LITERAL_START;
+const int NUM_LITERALS = LITERAL_END - LITERAL_START + 1;
 
 /**
  * Improvement ideas:
@@ -65,8 +68,10 @@ static nfa_t* new_literal_nfa(char);               // 'a'
 
 // Chracter classes
 static nfa_t* new_character_class(CharClass_t);
+static nfa_t* new_nfa_from_character_set(char*);
 
 // Character helpers
+static int allowed_character(char);
 static int get_character_config(char, CCCol_t);
 static int is_special_character(char);
 static int is_quantifier_symbol(char);
@@ -140,9 +145,9 @@ const int CHARACTER_CONFIG[][2] = {
     /* 'X' */ {0, 0},
     /* 'Y' */ {0, 0},
     /* 'Z' */ {0, 0},
-    /* '[' */ {0, 0},
+    /* '[' */ {1, 0},
     /* '\' */ {1, 0},
-    /* ']' */ {0, 0},
+    /* ']' */ {1, 0},
     /* '^' */ {0, 0},
     /* '_' */ {0, 0},
     /* '`' */ {0, 0},
@@ -267,9 +272,58 @@ static nfa_t* factor(state_t* state) {
    } else if (peek(state) == '.') {
       match(state, '.');
       temp = new_character_class(ANY);
+   } else if (peek(state) == '[') {
+      // match(state, '[');
+      // temp = new_character_class(ANY);
+      // match(state, ']');
+      error("[factor] Ranges not implemented");
    } else {
       error("[factor] Unexpected token");
    }
+   return temp;
+}
+
+// Extended backus-naur form (EBNF): <range> -> Letter [ - Letter ] <range>
+static nfa_t* range(state_t* state) {
+   static char seen_characters[128];
+   memset(seen_characters, 0, sizeof seen_characters);
+   int max_character_count = 0;
+
+   // TODO: some validation of characters (in ascii range 32-126)
+   // - if negation is implemented ('^'), then we need to handle escaping it to match '^' literally
+   //   - seems it only needs to be escaped if it is the first character in the range
+   //   - seems anything can be escaped and it's just treated as a literal
+   while (allowed_character(peek(state))) {
+      char start = next(state);
+      if (peek(state) == '-') {
+         match(state, '-');
+         char end = next(state);
+         if (start > end) {
+            continue;
+         }
+         for (char c = start; c <= end; c++) {
+            seen_characters[(int)c] = 1;
+         }
+         max_character_count += end - start + 1;
+      } else {
+         seen_characters[(int)start] = 1;
+         max_character_count++;
+      }
+   }
+
+   // Create nfa from seen characters
+   char* characters = (char*)xmalloc(MIN(max_character_count, 128) * sizeof(char) + 1);
+   int ch_index = 0;
+   for (int i = 0; i < sizeof seen_characters; i++) {
+      if (seen_characters[i] == 1) {
+         characters[ch_index++] = i;
+      }
+   }
+   characters[ch_index] = '\0';
+
+   nfa_t* temp = parse_regex_to_nfa(characters);
+   free(characters);
+
    return temp;
 }
 
@@ -466,39 +520,60 @@ static nfa_t* new_literal_nfa(char value) {
 }
 
 static nfa_t* new_character_class(CharClass_t cctype) {
-   // '.' matches any single character except line terminators \n, \r (but includes tabs)
-   // - multiply by 3 just to overallocate space for characters that require escaping,
-   //   as well as for joining pipe characters
-   static char any_cc_regex_string[NUM_LITERALS * 3] = {0};
+   // '.' matches any single character except line terminators \n, \r (but includes \t)
+   static char any_characters[NUM_LITERALS + 2] = {0};
 
    switch (cctype) {
       case ANY:
-         if (any_cc_regex_string[0] == 0) {
+         if (any_characters[0] == 0) {
             int index_offset = 0;
-            for (char cl = 0; cl < NUM_LITERALS; cl++) {
-               if (is_special_character(cl + LITERAL_START) == true) {
-                  any_cc_regex_string[index_offset++] = '\\';
-               }
-               any_cc_regex_string[index_offset++] = cl + LITERAL_START;
-               any_cc_regex_string[index_offset++] = '|';
+            for (char cl = LITERAL_START; cl <= LITERAL_END; cl++) {
+               any_characters[index_offset++] = cl;
             }
-            any_cc_regex_string[index_offset++] = '\\';
-            any_cc_regex_string[index_offset++] = 't';
-            any_cc_regex_string[index_offset] = '\0';
+            // TODO: Fix tabs, causing issues with parsing
+            // any_characters[index_offset++] = '\t';
+            any_characters[index_offset] = '\0';
          }
-         return parse_regex_to_nfa(any_cc_regex_string);
+         return new_nfa_from_character_set(any_characters);
       default:
          error("[new_character_class] unexpected character class");
    }
    return NULL;
 }
 
+static nfa_t* new_nfa_from_character_set(char* characters) {
+   // Over-allocate space for escaping characters and joining pipe characters
+   static char ch_set_regex_str[LITERAL_END * 3] = {0};
+   memset(ch_set_regex_str, 0, sizeof ch_set_regex_str);
+
+   int write_index = 0;
+   for (char* chptr = characters; *chptr != '\0'; chptr++) {
+      if (is_special_character(*chptr) == true) {
+         ch_set_regex_str[write_index++] = '\\';
+      }
+      ch_set_regex_str[write_index++] = *chptr;
+      if (*(chptr + 1) != '\0') {
+         ch_set_regex_str[write_index++] = '|';
+      }
+   }
+   ch_set_regex_str[write_index] = '\0';
+
+   return parse_regex_to_nfa(ch_set_regex_str);
+}
+
 /**
  * Character helpers
 */
 
+static int allowed_character(char c) {
+   if ((c >= LITERAL_START && c <= LITERAL_END) || c == '\t' || c == '\n' || c == '\r') {
+      return 1;
+   }
+   return 0;
+}
+
 static int get_character_config(char c, CCCol_t col) {
-   if (c < LITERAL_START || c > LITERAL_END) {
+   if (!allowed_character(c)) {
       // Null character can cause problems, return a value that will fail a `== true` or `== false` check.
       return -1;
    }
@@ -509,6 +584,8 @@ static int is_special_character(char c) { return get_character_config(c, SPECIAL
 
 static int is_quantifier_symbol(char c) { return get_character_config(c, QUANTIFIER_SYMBOL); }
 
+// NOTE: I don't know if this is needed, but it's here for now
+// Q: Why would a regex be written as '\\t' to match a tab instead of writing a tab character directly?
 static char get_escaped_character(char c) {
    switch (c) {
       case 't':
@@ -524,5 +601,5 @@ static char get_escaped_character(char c) {
 
 // Whether the character is in the first set of 'factor'
 static bool in_factor_first_set(char c) {
-   return is_special_character(c) == false || c == '(' || c == '\\' || c == '.';
+   return is_special_character(c) == false || c == '(' || c == '\\' || c == '.' || c == '[';
 }
