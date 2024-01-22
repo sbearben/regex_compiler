@@ -155,10 +155,25 @@ TEST_CASE(regex_works_with_the_any_character_class) {
    regex_release(regex);
 }
 
+TEST_CASE(regex_works_with_character_ranges) {
+   regex_t* regex = new_regex("[a-z]+( [a-z]+)*\\.?");
+
+   assert_true(regex_accepts(regex, "hello"));
+   assert_true(regex_accepts(regex, "hello world"));
+   assert_true(regex_accepts(regex, "i am writing a sentence."));
+
+   assert_false(regex_accepts(regex, "I am writing a sentence."));
+   assert_false(regex_accepts(regex, "HELLO"));
+   assert_false(regex_accepts(regex, "HELLO WORLD"));
+
+   regex_release(regex);
+}
+
 void on_register_tests(void) {
    REGISTER_TEST(regex_accepts_matches_exactly);
    REGISTER_TEST(regex_matches_quantifiers);
    REGISTER_TEST(regex_test_matches_any_substring);
    REGISTER_TEST(regex_matches_escape_characters);
    REGISTER_TEST(regex_works_with_the_any_character_class);
+   REGISTER_TEST(regex_works_with_character_ranges);
 }

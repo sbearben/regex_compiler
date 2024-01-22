@@ -27,6 +27,7 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define LITERAL_START 32
 #define LITERAL_END 126
+#define ASCII_SIZE 128
 
 const int NUM_LITERALS = LITERAL_END - LITERAL_START + 1;
 
@@ -58,6 +59,7 @@ static nfa_t* regexp(state_t*);
 static nfa_t* concat(state_t*);
 static nfa_t* quantifier(state_t*);
 static nfa_t* factor(state_t*);
+static nfa_t* range(state_t*);
 
 // Constructors per parser grammar
 static nfa_t* new_choice_nfa(nfa_t*, nfa_t*);      // 'a|b'
@@ -307,30 +309,30 @@ static nfa_t* factor(state_t* state) {
       match(state, '.');
       temp = new_character_class(ANY);
    } else if (peek(state) == '[') {
-      // match(state, '[');
-      // temp = new_character_class(ANY);
-      // match(state, ']');
-      error("[factor] Ranges not implemented");
+      match(state, '[');
+      temp = range(state);
+      match(state, ']');
    } else {
       error("[factor] Unexpected token");
    }
    return temp;
 }
 
-// Extended backus-naur form (EBNF): <range> -> Letter [ - Letter ] <range>
 static nfa_t* range(state_t* state) {
-   static char seen_characters[128];
+   static char seen_characters[ASCII_SIZE];
    memset(seen_characters, 0, sizeof seen_characters);
    int max_character_count = 0;
 
-   // TODO: some validation of characters (in ascii range 32-126)
-   // - if negation is implemented ('^'), then we need to handle escaping it to match '^' literally
-   //   - seems it only needs to be escaped if it is the first character in the range
-   //   - seems anything can be escaped and it's just treated as a literal
-   while (is_valid_character(peek(state))) {
+   // TODO: - if negation is implemented ('^'), then we need to handle escaping it to match '^' literally
+   //       - seems it only needs to be escaped if it is the first character in the range
+   //       - seems anything can be escaped and it's just treated as a literal
+   while (peek(state) != ']') {
       char start = next(state);
       if (peek(state) == '-') {
          match(state, '-');
+         if (is_valid_character(peek(state)) == false) {
+            error("Invalid character in range");
+         }
          char end = next(state);
          if (start > end) {
             continue;
@@ -346,7 +348,7 @@ static nfa_t* range(state_t* state) {
    }
 
    // Create nfa from seen characters
-   char* characters = (char*)xmalloc(MIN(max_character_count, 128) * sizeof(char) + 1);
+   char* characters = (char*)xmalloc((MIN(max_character_count, ASCII_SIZE) + 1) * sizeof(char));
    int ch_index = 0;
    for (int i = 0; i < sizeof seen_characters; i++) {
       if (seen_characters[i] == 1) {
@@ -355,7 +357,7 @@ static nfa_t* range(state_t* state) {
    }
    characters[ch_index] = '\0';
 
-   nfa_t* temp = parse_regex_to_nfa(characters);
+   nfa_t* temp = new_nfa_from_character_set(characters);
    free(characters);
 
    return temp;
@@ -553,6 +555,10 @@ static nfa_t* new_literal_nfa(char value) {
    return nfa;
 }
 
+/**
+ * Character classes
+*/
+
 static nfa_t* new_character_class(CharClass_t cctype) {
    // '.' matches any single character except line terminators \n, \r (but includes \t)
    static char any_characters[NUM_LITERALS + 2] = {0};
@@ -564,8 +570,7 @@ static nfa_t* new_character_class(CharClass_t cctype) {
             for (char cl = LITERAL_START; cl <= LITERAL_END; cl++) {
                any_characters[index_offset++] = cl;
             }
-            // TODO: Fix tabs, causing issues with parsing
-            // any_characters[index_offset++] = '\t';
+            any_characters[index_offset++] = '\t';
             any_characters[index_offset] = '\0';
          }
          return new_nfa_from_character_set(any_characters);
@@ -629,5 +634,6 @@ static char get_escaped_character(char c) {
 
 // Whether the character is in the first set of 'factor'
 static bool in_factor_first_set(char c) {
-   return is_special_character(c) == false || c == '(' || c == '\\' || c == '.' || c == '[';
+   return (is_valid_character(c) == true && is_special_character(c) == false) || c == '(' ||
+          c == '\\' || c == '.' || c == '[';
 }
