@@ -169,6 +169,15 @@ TEST_CASE(regex_works_with_character_ranges) {
    regex_release(regex);
 }
 
+TEST_CASE(regex_matches_tabs_and_newlines) {
+   regex_t* regex = new_regex("hello\n?\tworld");
+
+   assert_true(regex_accepts(regex, "hello\n\tworld"));
+   assert_true(regex_accepts(regex, "hello\tworld"));
+
+   regex_release(regex);
+}
+
 void on_register_tests(void) {
    REGISTER_TEST(regex_accepts_matches_exactly);
    REGISTER_TEST(regex_matches_quantifiers);
@@ -176,4 +185,5 @@ void on_register_tests(void) {
    REGISTER_TEST(regex_matches_escape_characters);
    REGISTER_TEST(regex_works_with_the_any_character_class);
    REGISTER_TEST(regex_works_with_character_ranges);
+   REGISTER_TEST(regex_matches_tabs_and_newlines);
 }

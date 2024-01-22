@@ -78,7 +78,6 @@ static int get_character_config(char, CCCol_t);
 static int is_valid_character(char);
 static int is_special_character(char);
 static int is_quantifier_symbol(char);
-static char get_escaped_character(char);
 static bool in_factor_first_set(char);
 
 /**
@@ -301,7 +300,7 @@ static nfa_t* factor(state_t* state) {
    } else if (peek(state) == '\\') {
       match(state, '\\');
       char value = next(state);
-      temp = new_literal_nfa(get_escaped_character(value));
+      temp = new_literal_nfa(value);
    } else if (is_special_character(peek(state)) == false) {
       char value = next(state);
       temp = new_literal_nfa(value);
@@ -616,21 +615,6 @@ static int is_valid_character(char c) { return get_character_config(c, VALID_CHA
 static int is_special_character(char c) { return get_character_config(c, SPECIAL_CHARACTER); }
 
 static int is_quantifier_symbol(char c) { return get_character_config(c, QUANTIFIER_SYMBOL); }
-
-// NOTE: I don't know if this is needed, but it's here for now
-// Q: Why would a regex be written as '\\t' to match a tab instead of writing a tab character directly?
-static char get_escaped_character(char c) {
-   switch (c) {
-      case 't':
-         return '\t';
-      case 'n':
-         return '\n';
-      case 'r':
-         return '\r';
-      default:
-         return c;
-   }
-}
 
 // Whether the character is in the first set of 'factor'
 static bool in_factor_first_set(char c) {
