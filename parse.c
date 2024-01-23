@@ -5,7 +5,8 @@
  * <regexp> -> <concat> { "|" <concat> }
  * <concat> -> <quantifier> { <quantifier> }
  * <quantifier> -> <factor> [ <quantifier-symbol> ]
- * <factor> ( <regexp> ) | Letter | \[<range>\]
+ * <factor> ( <regexp> ) | Letter | \[<negated-range>\]
+ * <negated-range> -> [ ^ ] <range>
  * <range> -> Letter [ - Letter ] <range>
  * <quantifier-symbol> -> * | + | ?
  * 
@@ -100,8 +101,8 @@ const int CHARACTER_CONFIG[][3] = {
     {0, 0, 0},    /* 'BS' */
     {1, 0, 0},    /* '\t' */
     {1, 0, 0},    /* '\n' */
-    {0, 0, 0},    /* 'VT' */
-    {0, 0, 0},    /* 'FF' */
+    {1, 0, 0},    /* 'VT' */
+    {1, 0, 0},    /* 'FF' */
     {1, 0, 0},    /* '\r' */
     {0, 0, 0},    /* 'SO' */
     {0, 0, 0},    /* 'SI' */
