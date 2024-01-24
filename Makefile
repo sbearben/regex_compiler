@@ -43,7 +43,7 @@ utils.o: utils.c utils.h
 
 ## Testing
 
-tests: test regex_test.so parse_test.so
+tests: test regex_test.so nfa_test.so
 
 test: test.o list.o
 	$(CC) $(CCFLAGS) $(INCLUDE) $(TLDFLAGS) $(TESTLIB)/test.o list.o -o $(OUTDIR)/$@
@@ -54,7 +54,7 @@ test.o: $(TESTLIB)/test.c $(TESTLIB)/test.h
 regex_test.so: $(TF_DIR)/regex_test.c sregex.o parse.o dfa.o nfa.o list.o utils.o
 	$(CC) $(TF_CCFLAGS) $(TF_INCLUDE) $^ -o ./$(TF_DIR)/$@
 
-parse_test.so: $(TF_DIR)/parse_test.c parse.o nfa.o list.o utils.o
+nfa_test.so: $(TF_DIR)/nfa_test.c parse.o nfa.o list.o utils.o
 	$(CC) $(TF_CCFLAGS) $(TF_INCLUDE) $^ -o ./$(TF_DIR)/$@
 
 ## Commands

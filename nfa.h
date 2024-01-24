@@ -2,6 +2,7 @@
 #define NFA_H
 
 #include "list.h"
+#include "parse.h"
 
 typedef struct nfa nfa_t;
 typedef struct nfa_node nfa_node_t;
@@ -29,32 +30,35 @@ struct nfa_edge {
       nfa_node_t* to;
 };
 
-// Constructors, getter/setters
-nfa_t* new_nfa();
-void nfa_consume_nodes(nfa_t*, nfa_t*);
-void nfa_set_start_end(nfa_t*, nfa_node_t*, nfa_node_t*);
-nfa_node_t* nfa_new_node(nfa_t*, int);
-nfa_node_t* new_node(int);
-nfa_edge_t* new_edges(int);
-void node_set_edges(nfa_node_t*, nfa_edge_t*, int);
-void init_epsilon(nfa_edge_t*);
+/**
+ * Creates an nfa from an ast.
+ */
+nfa_t* nfa_from_ast(ast_node_t*);
+
+/**
+ * Returns the number of states in the nfa.
+ */
 int nfa_num_states(nfa_t*);
-// Returns the language of the nfa
+
+/**
+ * Returns the language of the nfa as a null-terminated string.
+ */
 char* nfa_language(nfa_t*);
+
 /**
  * Finds the nfa_node a given nfa_node transtions to on a character.
  * @returns null if no nfa node with a transition on the character is found
- **/
+ */
 nfa_node_t* nfa_node_find_transition(nfa_node_t*, char);
 
-// Destructors
+/**
+ * Frees the nfa.
+ */
 void free_nfa(nfa_t*);
 
-// Traversal
-typedef void (*on_node_f)(nfa_node_t*);
-void nfa_traverse(nfa_t*, on_node_f);
-
-// Logging
+/**
+ * Logs the nfa to stdout.
+ */
 void log_nfa(nfa_t*);
 
 #endif  // NFA_H

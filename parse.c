@@ -25,13 +25,6 @@
 
 #include "utils.h"
 
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define LITERAL_START 32
-#define LITERAL_END 126
-#define ASCII_SIZE 128
-
-const int NUM_LITERALS = LITERAL_END - LITERAL_START + 1;
-
 /**
  * Improvement ideas:
  * - Add support for character classes
@@ -41,8 +34,6 @@ typedef struct state {
       const char* pattern;
       char* current;
 } state_t;
-
-typedef enum CharacterClass { ANY } CharClass_t;
 
 typedef enum ChracterConfigColumn {
    VALID_CHARACTER = 0,
@@ -68,14 +59,14 @@ static ast_node_t* ast_new_dot_node();                                    // '.'
 static ast_node_t* ast_new_literal_node(char);                            // 'a'
 static ast_node_t* ast_new_class_bracketed_node();                        // '[a-z]'
 
-static class_set_item_t* class_bracketed_node_add_literal(node_class_bracketed_t*, char);
-static class_set_item_t* class_bracketed_node_add_range(node_class_bracketed_t*, char, char);
+static class_set_item_t* class_bracketed_node_add_literal(ast_node_class_bracketed_t*, char);
+static class_set_item_t* class_bracketed_node_add_range(ast_node_class_bracketed_t*, char, char);
+static void class_bracketed_maybe_resize_items(ast_node_class_bracketed_t*);
 
 // Character helpers
-static int get_character_config(char, CCCol_t);
-static int is_valid_character(char);
 static int is_special_character(char);
 static int is_quantifier_symbol(char);
+static int get_character_config(char, CCCol_t);
 static int in_factor_first_set(char);
 
 /**
@@ -234,6 +225,38 @@ ast_node_t* parse_regex(char* pattern) {
    return result;
 }
 
+void free_ast(ast_node_t* root) {
+   if (root == NULL) {
+      return;
+   }
+   switch (root->kind) {
+      case NODE_KIND_OPTION:
+         free_ast(root->option->left);
+         free_ast(root->option->right);
+         free(root->option);
+         break;
+      case NODE_KIND_CONCAT:
+         free_ast(root->concat->left);
+         free_ast(root->concat->right);
+         free(root->concat);
+         break;
+      case NODE_KIND_REPITITION:
+         free_ast(root->repitition->child);
+         free(root->repitition);
+         break;
+      case NODE_KIND_CLASS_BRACKETED:
+         free(root->class_bracketed->items);
+         free(root->class_bracketed);
+         break;
+      case NODE_KIND_LITERAL:
+         free(root->literal);
+         break;
+      default:
+         break;
+   }
+   free(root);
+}
+
 static char peek(state_t* state) { return *state->current; }
 
 static void match(state_t* state, char expectedToken) {
@@ -272,7 +295,7 @@ static ast_node_t* quantifier(state_t* state) {
    ast_node_t* temp = factor(state);
    if (is_quantifier_symbol(peek(state)) == true) {
       char symbol = next(state);
-      RepetitionKind rep_kind;
+      RepetitionKind rep_kind = -1;
       switch (symbol) {
          case '*':
             rep_kind = REPITITION_KIND_ZERO_OR_MORE;
@@ -309,7 +332,7 @@ static ast_node_t* factor(state_t* state) {
       temp = ast_new_dot_node();
    } else if (peek(state) == '[') {
       match(state, '[');
-      temp = range(state);
+      temp = class_bracketed(state);
       match(state, ']');
    } else {
       error("[factor] Unexpected token");
@@ -321,7 +344,7 @@ static ast_node_t* class_bracketed(state_t* state) {
    ast_node_t* temp = ast_new_class_bracketed_node();
    if (peek(state) == '^') {
       match(state, '^');
-      temp->class_bracketed.negated = true;
+      temp->class_bracketed->negated = true;
    }
 
    while (peek(state) != ']') {
@@ -335,9 +358,9 @@ static ast_node_t* class_bracketed(state_t* state) {
          if (start > end) {
             continue;
          }
-         class_bracketed_node_add_range(&temp->class_bracketed, start, end);
+         class_bracketed_node_add_range(temp->class_bracketed, start, end);
       } else {
-         class_bracketed_node_add_literal(&temp->class_bracketed, start);
+         class_bracketed_node_add_literal(temp->class_bracketed, start);
       }
    }
 
@@ -345,71 +368,68 @@ static ast_node_t* class_bracketed(state_t* state) {
 }
 
 static ast_node_t* ast_new_option_node(ast_node_t* left, ast_node_t* right) {
-   ast_node_t* node = (ast_node_t*)xmalloc(sizeof(ast_node_t));
+   ast_node_t* node = xmalloc(sizeof(ast_node_t));
    node->kind = NODE_KIND_OPTION;
-   node->option.left = left;
-   node->option.right = right;
+   node->option = xmalloc(sizeof(ast_node_option_t));
+   node->option->left = left;
+   node->option->right = right;
    return node;
 }
 
 static ast_node_t* ast_new_concat_node(ast_node_t* left, ast_node_t* right) {
-   ast_node_t* node = (ast_node_t*)xmalloc(sizeof(ast_node_t));
+   ast_node_t* node = xmalloc(sizeof(ast_node_t));
    node->kind = NODE_KIND_CONCAT;
-   node->concat.left = left;
-   node->concat.right = right;
+   node->concat = xmalloc(sizeof(ast_node_concat_t));
+   node->concat->left = left;
+   node->concat->right = right;
    return node;
 }
 
 static ast_node_t* ast_new_repetition_node(RepetitionKind rep_kind, ast_node_t* child) {
-   ast_node_t* node = (ast_node_t*)xmalloc(sizeof(ast_node_t));
+   ast_node_t* node = xmalloc(sizeof(ast_node_t));
    node->kind = NODE_KIND_REPITITION;
-   node->repitition.rep_kind = rep_kind;
-   node->repitition.child = child;
+   node->repitition = xmalloc(sizeof(ast_node_repitition_t));
+   node->repitition->kind = rep_kind;
+   node->repitition->child = child;
    return node;
 }
 
 static ast_node_t* ast_new_dot_node() {
-   ast_node_t* node = (ast_node_t*)xmalloc(sizeof(ast_node_t));
+   ast_node_t* node = xmalloc(sizeof(ast_node_t));
    node->kind = NODE_KIND_DOT;
    return node;
 }
 
 static ast_node_t* ast_new_literal_node(char value) {
-   ast_node_t* node = (ast_node_t*)xmalloc(sizeof(ast_node_t));
+   ast_node_t* node = xmalloc(sizeof(ast_node_t));
    node->kind = NODE_KIND_LITERAL;
-   node->literal.value = value;
+   node->literal = xmalloc(sizeof(ast_node_literal_t));
+   node->literal->value = value;
    return node;
 }
 
 static ast_node_t* ast_new_class_bracketed_node() {
-   ast_node_t* node = (ast_node_t*)xmalloc(sizeof(ast_node_t));
+   ast_node_t* node = xmalloc(sizeof(ast_node_t));
    node->kind = NODE_KIND_CLASS_BRACKETED;
-   node->class_bracketed.negated = false;
-   node->class_bracketed.num_items = 0;
-   node->class_bracketed.items = NULL;
+   node->class_bracketed = xmalloc(sizeof(ast_node_class_bracketed_t));
+   node->class_bracketed->negated = false;
+   node->class_bracketed->num_items = 0;
+   node->class_bracketed->items = NULL;
    return node;
 }
 
-static class_set_item_t* class_bracketed_node_add_literal(node_class_bracketed_t* node,
+static class_set_item_t* class_bracketed_node_add_literal(ast_node_class_bracketed_t* node,
                                                           char value) {
-   if (node->num_items == node->items_size) {
-      node->items_size = node->items_size == 0 ? 1 : node->items_size * 2;
-      node->items =
-          (class_set_item_t**)xrealloc(node->items, node->items_size * sizeof(class_set_item_t*));
-   }
+   class_bracketed_maybe_resize_items(node);
    class_set_item_t* item = &node->items[node->num_items++];
    item->kind = CLASS_SET_ITEM_KIND_LITERAL;
    item->literal = value;
    return item;
 }
 
-static class_set_item_t* class_bracketed_node_add_range(node_class_bracketed_t* node, char start,
-                                                        char end) {
-   if (node->num_items == node->items_size) {
-      node->items_size = node->items_size == 0 ? 1 : node->items_size * 2;
-      node->items =
-          (class_set_item_t**)xrealloc(node->items, node->items_size * sizeof(class_set_item_t*));
-   }
+static class_set_item_t* class_bracketed_node_add_range(ast_node_class_bracketed_t* node,
+                                                        char start, char end) {
+   class_bracketed_maybe_resize_items(node);
    class_set_item_t* item = &node->items[node->num_items++];
    item->kind = CLASS_SET_ITEM_KIND_RANGE;
    item->range.start = start;
@@ -417,9 +437,22 @@ static class_set_item_t* class_bracketed_node_add_range(node_class_bracketed_t* 
    return item;
 }
 
+static void class_bracketed_maybe_resize_items(ast_node_class_bracketed_t* node) {
+   if (node->num_items == node->items_capacity) {
+      node->items_capacity = node->items_capacity == 0 ? 1 : node->items_capacity * 2;
+      node->items = xrealloc(node->items, node->items_capacity * sizeof(class_set_item_t));
+   }
+}
+
 /**
  * Character helpers
 */
+
+int is_valid_character(char c) { return get_character_config(c, VALID_CHARACTER); }
+
+static int is_special_character(char c) { return get_character_config(c, SPECIAL_CHARACTER); }
+
+static int is_quantifier_symbol(char c) { return get_character_config(c, QUANTIFIER_SYMBOL); }
 
 static int get_character_config(char c, CCCol_t col) {
    if (c < 0 || c > LITERAL_END) {
@@ -427,12 +460,6 @@ static int get_character_config(char c, CCCol_t col) {
    }
    return CHARACTER_CONFIG[(int)c][col];
 }
-
-static int is_valid_character(char c) { return get_character_config(c, VALID_CHARACTER); }
-
-static int is_special_character(char c) { return get_character_config(c, SPECIAL_CHARACTER); }
-
-static int is_quantifier_symbol(char c) { return get_character_config(c, QUANTIFIER_SYMBOL); }
 
 // Whether the character is in the first set of 'factor'
 static int in_factor_first_set(char c) {
