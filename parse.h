@@ -1,13 +1,13 @@
 #ifndef PARSE_H
 #define PARSE_H
 
-#include "nfa.h"
+ast_node_t* parse_regex(char* pattern);
 
 typedef struct node_option node_option_t;
 typedef struct node_concat node_concat_t;
 typedef struct node_repitition node_repitition_t;
-typedef struct node_literal node_literal_t;
 typedef struct node_dot node_dot_t;
+typedef struct node_literal node_literal_t;
 typedef struct node_class_bracketed node_class_bracketed_t;
 
 typedef struct class_set_item class_set_item_t;
@@ -19,7 +19,7 @@ typedef enum {
    NODE_KIND_REPITITION,
    NODE_KIND_LITERAL,
    NODE_KIND_DOT,
-   NODE_KIND_RANGE,
+   NODE_KIND_CLASS_BRACKETED,
 } NodeKind;
 
 typedef enum {
@@ -43,10 +43,10 @@ typedef struct ast_node {
             node_option_t option;
             node_concat_t concat;
             node_repitition_t repitition;
-            node_literal_t literal;
             node_dot_t dot;
+            node_literal_t literal;
             node_class_bracketed_t class_bracketed;
-      } v;
+      };
 } ast_node_t;
 
 struct node_option {
@@ -65,17 +65,18 @@ struct node_repitition {
       ast_node_t* child;
 };
 
-struct node_literal {
-      char value;
-};
-
 struct node_dot {
       char nothing;
+};
+
+struct node_literal {
+      char value;
 };
 
 struct node_class_bracketed {
       int negated;
       int num_items;
+      int items_size;
       class_set_item_t* items;
 };
 
@@ -84,15 +85,12 @@ struct class_set_item {
       union {
             char literal;
             class_set_range_t range;
-      } value;
+      };
 };
 
 struct class_set_range {
       char start;
       char end;
 };
-
-// Parse null-terminated regex string into an NFA.
-nfa_t* parse_regex_to_nfa(char*);
 
 #endif  // PARSE_H
