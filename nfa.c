@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "utils.h"
+
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 typedef enum CharacterClass { CHARACTER_CLASS_ANY } CharClass_t;
@@ -39,9 +41,6 @@ static void nfa_traverse(nfa_t*, on_node_f);
 static void nodes_traverse(nfa_node_t*, on_node_f, list_t*);
 static void free_nfa_list_node(void*);
 static void log_node(nfa_node_t*);
-// Generic helpers
-static void* xmalloc(size_t);
-static void error(char*);
 
 static int node_id = 0;
 
@@ -561,22 +560,4 @@ static void log_node(nfa_node_t* node) {
          printf("Edge: %c, to: %d\n", edge->value, to_id);
       }
    }
-}
-
-/**
- * Generic helpers
-*/
-
-static void* xmalloc(size_t size) {
-   void* ptr = malloc(size);
-   if (!ptr) {
-      fprintf(stderr, "malloc failed\n");
-      exit(EXIT_FAILURE);
-   }
-   return ptr;
-}
-
-static void error(char* msg) {
-   fprintf(stderr, "Error: %s\n", msg);
-   exit(EXIT_FAILURE);
 }
