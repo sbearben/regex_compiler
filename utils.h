@@ -3,7 +3,8 @@
 
 #include <stdlib.h>
 
-void* xmalloc(size_t size);
+void* xmalloc(size_t);
+void* xrealloc(void*, size_t);
 void error(char*);
 int num_places(int n);
 

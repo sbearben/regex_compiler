@@ -1,13 +1,13 @@
 /**
- * AK: Parse basic regex into an NFA structure
+ * AK: Parse basic regexes into an AST
  * 
  * Regex EBNF grammar:
  * <regexp> -> <concat> { "|" <concat> }
  * <concat> -> <quantifier> { <quantifier> }
  * <quantifier> -> <factor> [ <quantifier-symbol> ]
- * <factor> ( <regexp> ) | Letter | \[<negated-range>\]
- * <negated-range> -> [ ^ ] <range>
- * <range> -> Letter [ - Letter ] <range>
+ * <factor> ( <regexp> ) | Letter | \[<negated-class-bracketed>\]
+ * <negated-class-bracketed> -> [ ^ ] <class-bracketed>
+ * <class-bracketed> -> Letter [ - Letter ] <class-bracketed>
  * <quantifier-symbol> -> * | + | ?
  * 
  * Inputs a line of text from stdin
@@ -25,26 +25,15 @@
 
 #include "utils.h"
 
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define LITERAL_START 32
-#define LITERAL_END 126
-#define ASCII_SIZE 128
-
-const int NUM_LITERALS = LITERAL_END - LITERAL_START + 1;
-
 /**
  * Improvement ideas:
- * - Instead of `start` on nfa be a node, make it an edge that points to the start node
- *   - this might make it easier to compose nfas
- * - Add support for character classes / ranges
+ * - Add support for character classes
  */
 
 typedef struct state {
       const char* pattern;
       char* current;
 } state_t;
-
-typedef enum CharacterClass { ANY } CharClass_t;
 
 typedef enum ChracterConfigColumn {
    VALID_CHARACTER = 0,
@@ -56,30 +45,29 @@ static char peek(state_t*);
 static void match(state_t*, char);
 
 // Recursive descent functions
-static nfa_t* regexp(state_t*);
-static nfa_t* concat(state_t*);
-static nfa_t* quantifier(state_t*);
-static nfa_t* factor(state_t*);
-static nfa_t* range(state_t*);
+static ast_node_t* regexp(state_t*);
+static ast_node_t* concat(state_t*);
+static ast_node_t* quantifier(state_t*);
+static ast_node_t* factor(state_t*);
+static ast_node_t* class_bracketed(state_t*);
 
-// Constructors per parser grammar
-static nfa_t* new_choice_nfa(nfa_t*, nfa_t*);      // 'a|b'
-static nfa_t* new_concat_nfa(nfa_t*, nfa_t*);      // 'ab'
-static nfa_t* new_repetition_nfa(nfa_t*);          // 'a*'
-static nfa_t* new_min_one_repetition_nfa(nfa_t*);  // 'a+'
-static nfa_t* new_optional_nfa(nfa_t*);            // 'a?'
-static nfa_t* new_literal_nfa(char);               // 'a'
+// Constructors for AST nodes
+static ast_node_t* ast_new_option_node(ast_node_t*, ast_node_t*);         // 'a|b'
+static ast_node_t* ast_new_concat_node(ast_node_t*, ast_node_t*);         // 'ab'
+static ast_node_t* ast_new_repetition_node(RepetitionKind, ast_node_t*);  // 'a*|a+|a?'
+static ast_node_t* ast_new_dot_node();                                    // '.'
+static ast_node_t* ast_new_literal_node(char);                            // 'a'
+static ast_node_t* ast_new_class_bracketed_node();                        // '[a-z]'
 
-// Chracter classes
-static nfa_t* new_character_class(CharClass_t);
-static nfa_t* new_nfa_from_character_set(char*);
+static class_set_item_t* class_bracketed_node_add_literal(ast_node_class_bracketed_t*, char);
+static class_set_item_t* class_bracketed_node_add_range(ast_node_class_bracketed_t*, char, char);
+static void class_bracketed_maybe_resize_items(ast_node_class_bracketed_t*);
 
 // Character helpers
-static int get_character_config(char, CCCol_t);
-static int is_valid_character(char);
 static int is_special_character(char);
 static int is_quantifier_symbol(char);
-static bool in_factor_first_set(char);
+static int get_character_config(char, CCCol_t);
+static int in_factor_first_set(char);
 
 /**
  * ascii table from 32 to 126 
@@ -223,18 +211,50 @@ const int CHARACTER_CONFIG[][3] = {
  * Parser
 */
 
-nfa_t* parse_regex_to_nfa(char* pattern) {
+ast_node_t* parse_regex(char* pattern) {
    state_t state = {
        .pattern = pattern,
        .current = pattern,
    };
-   nfa_t* result = regexp(&state);
+   ast_node_t* result = regexp(&state);
 
    if (peek(&state) != '\0') {
       error("Expected end of input (\'\\0\')");
    }
 
    return result;
+}
+
+void free_ast(ast_node_t* root) {
+   if (root == NULL) {
+      return;
+   }
+   switch (root->kind) {
+      case NODE_KIND_OPTION:
+         free_ast(root->option->left);
+         free_ast(root->option->right);
+         free(root->option);
+         break;
+      case NODE_KIND_CONCAT:
+         free_ast(root->concat->left);
+         free_ast(root->concat->right);
+         free(root->concat);
+         break;
+      case NODE_KIND_REPITITION:
+         free_ast(root->repitition->child);
+         free(root->repitition);
+         break;
+      case NODE_KIND_CLASS_BRACKETED:
+         free(root->class_bracketed->items);
+         free(root->class_bracketed);
+         break;
+      case NODE_KIND_LITERAL:
+         free(root->literal);
+         break;
+      default:
+         break;
+   }
+   free(root);
 }
 
 static char peek(state_t* state) { return *state->current; }
@@ -253,47 +273,49 @@ static char next(state_t* state) {
    return c;
 }
 
-static nfa_t* regexp(state_t* state) {
-   nfa_t* temp = concat(state);
+static ast_node_t* regexp(state_t* state) {
+   ast_node_t* temp = concat(state);
    while (peek(state) == '|') {
       match(state, '|');
-      temp = new_choice_nfa(temp, concat(state));
+      temp = ast_new_option_node(temp, concat(state));
    }
    return temp;
 }
 
-static nfa_t* concat(state_t* state) {
-   nfa_t* temp = quantifier(state);
+static ast_node_t* concat(state_t* state) {
+   ast_node_t* temp = quantifier(state);
    while (in_factor_first_set(peek(state)) == true) {
       // We don't match here since current token is part of first set of `factor`, so if we matched the conditions in factor will fail
-      temp = new_concat_nfa(temp, quantifier(state));
+      temp = ast_new_concat_node(temp, quantifier(state));
    }
    return temp;
 }
 
-static nfa_t* quantifier(state_t* state) {
-   nfa_t* temp = factor(state);
+static ast_node_t* quantifier(state_t* state) {
+   ast_node_t* temp = factor(state);
    if (is_quantifier_symbol(peek(state)) == true) {
       char symbol = next(state);
+      RepetitionKind rep_kind = -1;
       switch (symbol) {
          case '*':
-            temp = new_repetition_nfa(temp);
+            rep_kind = REPITITION_KIND_ZERO_OR_MORE;
             break;
          case '+':
-            temp = new_min_one_repetition_nfa(temp);
+            rep_kind = REPITITION_KIND_ONE_OR_MORE;
             break;
          case '?':
-            temp = new_optional_nfa(temp);
+            rep_kind = REPITITION_KIND_ZERO_OR_ONE;
             break;
          default:
             error("Invalid quantifier symbol");
       }
+      temp = ast_new_repetition_node(rep_kind, temp);
    }
    return temp;
 }
 
-static nfa_t* factor(state_t* state) {
-   nfa_t* temp = NULL;
+static ast_node_t* factor(state_t* state) {
+   ast_node_t* temp = NULL;
    if (peek(state) == '(') {
       match(state, '(');
       temp = regexp(state);
@@ -301,16 +323,16 @@ static nfa_t* factor(state_t* state) {
    } else if (peek(state) == '\\') {
       match(state, '\\');
       char value = next(state);
-      temp = new_literal_nfa(value);
+      temp = ast_new_literal_node(value);
    } else if (is_special_character(peek(state)) == false) {
       char value = next(state);
-      temp = new_literal_nfa(value);
+      temp = ast_new_literal_node(value);
    } else if (peek(state) == '.') {
       match(state, '.');
-      temp = new_character_class(ANY);
+      temp = ast_new_dot_node();
    } else if (peek(state) == '[') {
       match(state, '[');
-      temp = range(state);
+      temp = class_bracketed(state);
       match(state, ']');
    } else {
       error("[factor] Unexpected token");
@@ -318,18 +340,11 @@ static nfa_t* factor(state_t* state) {
    return temp;
 }
 
-static nfa_t* range(state_t* state) {
-   static char seen_characters[ASCII_SIZE];
-   memset(seen_characters, 0, sizeof seen_characters);
-   int max_character_count = 0;
-   int range_negated = 0;
-
-   // TODO: - if negation is implemented ('^'), then we need to handle escaping it to match '^' literally
-   //       - seems it only needs to be escaped if it is the first character in the range
-   //       - seems anything can be escaped and it's just treated as a literal
+static ast_node_t* class_bracketed(state_t* state) {
+   ast_node_t* temp = ast_new_class_bracketed_node();
    if (peek(state) == '^') {
       match(state, '^');
-      range_negated = 1;
+      temp->class_bracketed->negated = true;
    }
 
    while (peek(state) != ']') {
@@ -343,284 +358,101 @@ static nfa_t* range(state_t* state) {
          if (start > end) {
             continue;
          }
-         for (char c = start; c <= end; c++) {
-            seen_characters[(int)c] = 1;
-         }
-         max_character_count += end - start + 1;
+         class_bracketed_node_add_range(temp->class_bracketed, start, end);
       } else {
-         seen_characters[(int)start] = 1;
-         max_character_count++;
+         class_bracketed_node_add_literal(temp->class_bracketed, start);
       }
    }
-
-   if (range_negated == 1) {
-      max_character_count = 0;
-      for (int i = 0; i < ASCII_SIZE; i++) {
-         if (is_valid_character((char)i) == true) {
-            seen_characters[i] = seen_characters[i] == 0 ? 1 : 0;
-            if (seen_characters[i] == 1) {
-               max_character_count++;
-            }
-         }
-      }
-   }
-
-   // Create nfa from seen characters
-   char* characters = (char*)xmalloc((MIN(max_character_count, ASCII_SIZE) + 1) * sizeof(char));
-   int ch_index = 0;
-   for (int i = 0; i < ASCII_SIZE; i++) {
-      if (seen_characters[i] == 1) {
-         characters[ch_index++] = i;
-      }
-   }
-   characters[ch_index] = '\0';
-
-   nfa_t* temp = new_nfa_from_character_set(characters);
-   free(characters);
 
    return temp;
 }
 
-/**
- * NFA constructors
-*/
-
-static nfa_t* new_choice_nfa(nfa_t* left, nfa_t* right) {
-   nfa_t* nfa = new_nfa();
-   nfa_consume_nodes(nfa, left);
-   nfa_consume_nodes(nfa, right);
-
-   // Turn off 'accepting' of both sides
-   left->end->is_accepting = false;
-   right->end->is_accepting = false;
-
-   // Create the start and end nodes of choice nfa
-   nfa_node_t* start_node = nfa_new_node(nfa, 2);
-   nfa_node_t* end_node = nfa_new_node(nfa, 0);
-
-   // Initialize epsilon edges for start node
-   for (int i = 0; i < start_node->num_edges; i++) {
-      init_epsilon(&start_node->edges[i]);
-   }
-   start_node->edges[0].to = left->start;
-   start_node->edges[1].to = right->start;
-
-   // Create epsilon edges that connect to end node
-   // Left-end -> end
-   nfa_edge_t* left_edge_to_end = new_edges(1);
-   init_epsilon(left_edge_to_end);
-   left_edge_to_end->to = end_node;
-   node_set_edges(left->end, left_edge_to_end, 1);
-   // Right-end -> end
-   nfa_edge_t* right_edge_to_end = new_edges(1);
-   init_epsilon(right_edge_to_end);
-   right_edge_to_end->to = end_node;
-   node_set_edges(right->end, right_edge_to_end, 1);
-
-   // Hook up start and end to nfa
-   nfa_set_start_end(nfa, start_node, end_node);
-
-   // Free the old nfas, but not their contents
-   free(left);
-   free(right);
-
-   return nfa;
+static ast_node_t* ast_new_option_node(ast_node_t* left, ast_node_t* right) {
+   ast_node_t* node = xmalloc(sizeof(ast_node_t));
+   node->kind = NODE_KIND_OPTION;
+   node->option = xmalloc(sizeof(ast_node_option_t));
+   node->option->left = left;
+   node->option->right = right;
+   return node;
 }
 
-static nfa_t* new_concat_nfa(nfa_t* left, nfa_t* right) {
-   nfa_t* nfa = new_nfa();
-   nfa_consume_nodes(nfa, left);
-   nfa_consume_nodes(nfa, right);
-
-   // Turn off 'accepting' of both sides
-   left->end->is_accepting = false;
-   right->end->is_accepting = false;
-
-   // Create the connecting epsilon edge
-   nfa_edge_t* edges = new_edges(1);
-   init_epsilon(edges);
-   // Make the connection between the left and right side using the new 'edge'
-   edges->to = right->start;
-   node_set_edges(left->end, edges, 1);
-
-   // Hook up start and end to nfa
-   nfa_set_start_end(nfa, left->start, right->end);
-
-   // Free the old nfas, but not their contents
-   free(left);
-   free(right);
-
-   return nfa;
+static ast_node_t* ast_new_concat_node(ast_node_t* left, ast_node_t* right) {
+   ast_node_t* node = xmalloc(sizeof(ast_node_t));
+   node->kind = NODE_KIND_CONCAT;
+   node->concat = xmalloc(sizeof(ast_node_concat_t));
+   node->concat->left = left;
+   node->concat->right = right;
+   return node;
 }
 
-static nfa_t* new_repetition_nfa(nfa_t* old_nfa) {
-   nfa_t* nfa = new_nfa();
-   nfa_consume_nodes(nfa, old_nfa);
-
-   // Turn off 'accepting' of previous nfa
-   old_nfa->end->is_accepting = false;
-
-   // Create the start and end nodes of repetition nfa
-   nfa_node_t* start_node = nfa_new_node(nfa, 2);
-   nfa_node_t* end_node = nfa_new_node(nfa, 0);
-
-   // Initialize epsilon edges for start node
-   for (int i = 0; i < start_node->num_edges; i++) {
-      init_epsilon(&start_node->edges[i]);
-   }
-   start_node->edges[0].to = old_nfa->start;
-   start_node->edges[1].to = end_node;
-
-   // Create epsilon edges for old end node
-   nfa_edge_t* old_end_edges = new_edges(2);
-   for (int i = 0; i < 2; i++) {
-      init_epsilon(&old_end_edges[i]);
-   }
-   old_end_edges[0].to = old_nfa->start;
-   old_end_edges[1].to = end_node;
-   node_set_edges(old_nfa->end, old_end_edges, 2);
-
-   // Hook up start and end to nfa
-   nfa_set_start_end(nfa, start_node, end_node);
-
-   // Free the old nfa, but not its contents;
-   free(old_nfa);
-
-   return nfa;
+static ast_node_t* ast_new_repetition_node(RepetitionKind rep_kind, ast_node_t* child) {
+   ast_node_t* node = xmalloc(sizeof(ast_node_t));
+   node->kind = NODE_KIND_REPITITION;
+   node->repitition = xmalloc(sizeof(ast_node_repitition_t));
+   node->repitition->kind = rep_kind;
+   node->repitition->child = child;
+   return node;
 }
 
-static nfa_t* new_min_one_repetition_nfa(nfa_t* old_nfa) {
-   nfa_t* nfa = new_nfa();
-   nfa_consume_nodes(nfa, old_nfa);
-
-   // Turn off 'accepting' of previous nfa
-   old_nfa->end->is_accepting = false;
-
-   // Create the start and end nodes of repetition nfa
-   nfa_node_t* start_node = nfa_new_node(nfa, 1);
-   nfa_node_t* end_node = nfa_new_node(nfa, 0);
-
-   // Initialize epsilon edges for start node
-   init_epsilon(&start_node->edges[0]);
-   start_node->edges[0].to = old_nfa->start;
-
-   // Create epsilon edges for old end node
-   nfa_edge_t* old_end_edges = new_edges(2);
-   for (int i = 0; i < 2; i++) {
-      init_epsilon(&old_end_edges[i]);
-   }
-   old_end_edges[0].to = old_nfa->start;
-   old_end_edges[1].to = end_node;
-   node_set_edges(old_nfa->end, old_end_edges, 2);
-
-   // Hook up start and end to nfa
-   nfa_set_start_end(nfa, start_node, end_node);
-
-   // Free the old nfa, but not its contents;
-   free(old_nfa);
-
-   return nfa;
+static ast_node_t* ast_new_dot_node() {
+   ast_node_t* node = xmalloc(sizeof(ast_node_t));
+   node->kind = NODE_KIND_DOT;
+   return node;
 }
 
-static nfa_t* new_optional_nfa(nfa_t* old_nfa) {
-   nfa_t* nfa = new_nfa();
-   nfa_consume_nodes(nfa, old_nfa);
-
-   // Turn off 'accepting' of previous nfa
-   old_nfa->end->is_accepting = false;
-
-   // Create the start and end nodes of repetition nfa
-   nfa_node_t* start_node = nfa_new_node(nfa, 2);
-   nfa_node_t* end_node = nfa_new_node(nfa, 0);
-
-   // Initialize epsilon edges for start node
-   for (int i = 0; i < start_node->num_edges; i++) {
-      init_epsilon(&start_node->edges[i]);
-   }
-   start_node->edges[0].to = old_nfa->start;
-   start_node->edges[1].to = end_node;
-
-   // Create epsilon edges for old end node
-   nfa_edge_t* old_end_edges = new_edges(1);
-   init_epsilon(old_end_edges);
-   old_end_edges->to = end_node;
-   node_set_edges(old_nfa->end, old_end_edges, 1);
-
-   // Hook up start and end to nfa
-   nfa_set_start_end(nfa, start_node, end_node);
-
-   // Free the old nfa, but not its contents;
-   free(old_nfa);
-
-   return nfa;
+static ast_node_t* ast_new_literal_node(char value) {
+   ast_node_t* node = xmalloc(sizeof(ast_node_t));
+   node->kind = NODE_KIND_LITERAL;
+   node->literal = xmalloc(sizeof(ast_node_literal_t));
+   node->literal->value = value;
+   return node;
 }
 
-static nfa_t* new_literal_nfa(char value) {
-   nfa_t* nfa = new_nfa();
-
-   // Create start and end nodes of literal nfa
-   nfa_node_t* start_node = nfa_new_node(nfa, 1);
-   nfa_node_t* end_node = nfa_new_node(nfa, 0);
-
-   // Init connecting edge with the literal value and make connection
-   start_node->edges[0].value = value;
-   start_node->edges[0].is_epsilon = false;
-   start_node->edges[0].to = end_node;
-
-   // Hook up start and end to nfa
-   nfa_set_start_end(nfa, start_node, end_node);
-
-   return nfa;
+static ast_node_t* ast_new_class_bracketed_node() {
+   ast_node_t* node = xmalloc(sizeof(ast_node_t));
+   node->kind = NODE_KIND_CLASS_BRACKETED;
+   node->class_bracketed = xmalloc(sizeof(ast_node_class_bracketed_t));
+   node->class_bracketed->negated = false;
+   node->class_bracketed->num_items = 0;
+   node->class_bracketed->items = NULL;
+   return node;
 }
 
-/**
- * Character classes
-*/
-
-static nfa_t* new_character_class(CharClass_t cctype) {
-   // '.' matches any single character except line terminators \n, \r (but includes \t)
-   static char any_characters[NUM_LITERALS + 2] = {0};
-
-   switch (cctype) {
-      case ANY:
-         if (any_characters[0] == 0) {
-            int index_offset = 0;
-            for (char cl = LITERAL_START; cl <= LITERAL_END; cl++) {
-               any_characters[index_offset++] = cl;
-            }
-            any_characters[index_offset++] = '\t';
-            any_characters[index_offset] = '\0';
-         }
-         return new_nfa_from_character_set(any_characters);
-      default:
-         error("[new_character_class] unexpected character class");
-   }
-   return NULL;
+static class_set_item_t* class_bracketed_node_add_literal(ast_node_class_bracketed_t* node,
+                                                          char value) {
+   class_bracketed_maybe_resize_items(node);
+   class_set_item_t* item = &node->items[node->num_items++];
+   item->kind = CLASS_SET_ITEM_KIND_LITERAL;
+   item->literal = value;
+   return item;
 }
 
-static nfa_t* new_nfa_from_character_set(char* characters) {
-   // Over-allocate space for escaping characters and joining pipe characters
-   static char ch_set_regex_str[LITERAL_END * 3] = {0};
-   memset(ch_set_regex_str, 0, sizeof ch_set_regex_str);
+static class_set_item_t* class_bracketed_node_add_range(ast_node_class_bracketed_t* node,
+                                                        char start, char end) {
+   class_bracketed_maybe_resize_items(node);
+   class_set_item_t* item = &node->items[node->num_items++];
+   item->kind = CLASS_SET_ITEM_KIND_RANGE;
+   item->range.start = start;
+   item->range.end = end;
+   return item;
+}
 
-   int write_index = 0;
-   for (char* chptr = characters; *chptr != '\0'; chptr++) {
-      if (is_special_character(*chptr) == true) {
-         ch_set_regex_str[write_index++] = '\\';
-      }
-      ch_set_regex_str[write_index++] = *chptr;
-      if (*(chptr + 1) != '\0') {
-         ch_set_regex_str[write_index++] = '|';
-      }
+static void class_bracketed_maybe_resize_items(ast_node_class_bracketed_t* node) {
+   if (node->num_items == node->items_capacity) {
+      node->items_capacity = node->items_capacity == 0 ? 1 : node->items_capacity * 2;
+      node->items = xrealloc(node->items, node->items_capacity * sizeof(class_set_item_t));
    }
-   ch_set_regex_str[write_index] = '\0';
-
-   return parse_regex_to_nfa(ch_set_regex_str);
 }
 
 /**
  * Character helpers
 */
+
+int is_valid_character(char c) { return get_character_config(c, VALID_CHARACTER); }
+
+static int is_special_character(char c) { return get_character_config(c, SPECIAL_CHARACTER); }
+
+static int is_quantifier_symbol(char c) { return get_character_config(c, QUANTIFIER_SYMBOL); }
 
 static int get_character_config(char c, CCCol_t col) {
    if (c < 0 || c > LITERAL_END) {
@@ -629,14 +461,8 @@ static int get_character_config(char c, CCCol_t col) {
    return CHARACTER_CONFIG[(int)c][col];
 }
 
-static int is_valid_character(char c) { return get_character_config(c, VALID_CHARACTER); }
-
-static int is_special_character(char c) { return get_character_config(c, SPECIAL_CHARACTER); }
-
-static int is_quantifier_symbol(char c) { return get_character_config(c, QUANTIFIER_SYMBOL); }
-
 // Whether the character is in the first set of 'factor'
-static bool in_factor_first_set(char c) {
+static int in_factor_first_set(char c) {
    return (is_valid_character(c) == true && is_special_character(c) == false) || c == '(' ||
           c == '\\' || c == '.' || c == '[';
 }

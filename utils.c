@@ -13,6 +13,15 @@ void* xmalloc(size_t size) {
    return ptr;
 }
 
+void* xrealloc(void* ptr, size_t size) {
+   void* new_ptr = realloc(ptr, size);
+   if (!new_ptr) {
+      fprintf(stderr, "realloc failed\n");
+      exit(EXIT_FAILURE);
+   }
+   return new_ptr;
+}
+
 int num_places(int n) {
    int r = 1;
    if (n < 0) n = -n;
