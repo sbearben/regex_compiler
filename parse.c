@@ -244,12 +244,16 @@ void free_ast(ast_node_t* root) {
          free_ast(root->repitition->child);
          free(root->repitition);
          break;
+
+      case NODE_KIND_LITERAL:
+         free(root->literal);
+         break;
+      case NODE_KIND_CHARACTER_CLASS:
+         free(root->character_class);
+         break;
       case NODE_KIND_CLASS_BRACKETED:
          free(root->class_bracketed->items);
          free(root->class_bracketed);
-         break;
-      case NODE_KIND_LITERAL:
-         free(root->literal);
          break;
       default:
          break;
@@ -405,6 +409,14 @@ static ast_node_t* ast_new_literal_node(char value) {
    node->kind = NODE_KIND_LITERAL;
    node->literal = xmalloc(sizeof(ast_node_literal_t));
    node->literal->value = value;
+   return node;
+}
+
+static ast_node_t* ast_new_character_class_node(CharacterClassKind kind) {
+   ast_node_t* node = xmalloc(sizeof(ast_node_t));
+   node->kind = NODE_KIND_CHARACTER_CLASS;
+   node->character_class = xmalloc(sizeof(ast_character_class_t));
+   node->character_class->kind = kind;
    return node;
 }
 
