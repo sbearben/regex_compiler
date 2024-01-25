@@ -347,7 +347,7 @@ static ast_node_t* class_bracketed(state_t* state) {
       temp->class_bracketed->negated = true;
    }
 
-   while (peek(state) != ']') {
+   while (is_valid_character(peek(state)) == true && peek(state) != ']') {
       char start = next(state);
       if (peek(state) == '-') {
          match(state, '-');
