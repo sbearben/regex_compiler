@@ -10,11 +10,7 @@
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
-typedef enum CharacterClass { CHARACTER_CLASS_ANY } CharClass_t;
-
-// Public API
-
-// Constructors per parser grammar
+// Primitive NFA constructors
 static nfa_t* new_choice_nfa(nfa_t*, nfa_t*);      // 'a|b'
 static nfa_t* new_concat_nfa(nfa_t*, nfa_t*);      // 'ab'
 static nfa_t* new_repetition_nfa(nfa_t*);          // 'a*'
@@ -22,7 +18,8 @@ static nfa_t* new_min_one_repetition_nfa(nfa_t*);  // 'a+'
 static nfa_t* new_optional_nfa(nfa_t*);            // 'a?'
 static nfa_t* new_literal_nfa(char);               // 'a'
 // Chracter classes
-static nfa_t* new_character_class_nfa(CharClass_t);
+static nfa_t* new_any_character_nfa();
+static nfa_t* new_character_class_nfa(CharacterClassKind);
 static nfa_t* new_class_bracketed_nfa(ast_node_class_bracketed_t*);
 static nfa_t* nfa_from_character_set(char*);
 
@@ -82,7 +79,7 @@ nfa_t* nfa_from_ast(ast_node_t* root) {
          break;
       }
       case NODE_KIND_DOT: {
-         nfa = new_character_class_nfa(CHARACTER_CLASS_ANY);
+         nfa = new_any_character_nfa();
          break;
       }
       case NODE_KIND_LITERAL: {
@@ -155,11 +152,7 @@ void log_nfa(nfa_t* nfa) {
 }
 
 /**
- * NFA Constructors (private)
-*/
-
-/**
- * NFA constructors
+ * Primitive NFA constructors
 */
 
 static nfa_t* new_choice_nfa(nfa_t* left, nfa_t* right) {
@@ -354,25 +347,50 @@ static nfa_t* new_literal_nfa(char value) {
  * Character classes
 */
 
-static nfa_t* new_character_class_nfa(CharClass_t cctype) {
+static nfa_t* new_any_character_nfa() {
    // '.' matches any single character except line terminators \n, \r (but includes \t)
    static char any_characters[NUM_LITERALS + 2] = {0};
 
-   switch (cctype) {
-      case CHARACTER_CLASS_ANY:
-         if (any_characters[0] == 0) {
-            int index_offset = 0;
-            for (char cl = LITERAL_START; cl <= LITERAL_END; cl++) {
-               any_characters[index_offset++] = cl;
-            }
-            any_characters[index_offset++] = '\t';
-            any_characters[index_offset] = '\0';
-         }
-         return nfa_from_character_set(any_characters);
-      default:
-         error("[new_character_class] unexpected character class");
+   if (any_characters[0] == 0) {
+      int index_offset = 0;
+      for (char cl = LITERAL_START; cl <= LITERAL_END; cl++) {
+         any_characters[index_offset++] = cl;
+      }
+      any_characters[index_offset++] = '\t';
+      any_characters[index_offset] = '\0';
    }
-   return NULL;
+   return nfa_from_character_set(any_characters);
+}
+
+static nfa_t* new_character_class_nfa(CharacterClassKind kind) {
+   static const char digit_characters[] = "0123456789";
+   static const char whitespace_characters[] = " \t\n\r\f\v";
+   static const char word_characters[] =
+       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
+
+   nfa_t* nfa = NULL;
+
+   switch (kind) {
+      case CHARACTER_CLASS_KIND_DIGIT:
+         nfa = nfa_from_character_set(digit_characters);
+         break;
+      case CHARACTER_CLASS_KIND_NON_DIGIT:
+         break;
+      case CHARACTER_CLASS_KIND_WHITESPACE:
+         nfa = nfa_from_character_set(whitespace_characters);
+         break;
+      case CHARACTER_CLASS_KIND_NON_WHITESPACE:
+         break;
+      case CHARACTER_CLASS_KIND_WORD:
+         nfa = nfa_from_character_set(word_characters);
+         break;
+      case CHARACTER_CLASS_KIND_NON_WORD:
+         break;
+      default:
+         error("[new_character_class_nfa] unexpected character class kind");
+   }
+
+   return nfa;
 }
 
 static nfa_t* new_class_bracketed_nfa(ast_node_class_bracketed_t* node) {
