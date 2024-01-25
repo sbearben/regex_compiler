@@ -57,6 +57,7 @@ static ast_node_t* ast_new_concat_node(ast_node_t*, ast_node_t*);         // 'ab
 static ast_node_t* ast_new_repetition_node(RepetitionKind, ast_node_t*);  // 'a*|a+|a?'
 static ast_node_t* ast_new_dot_node();                                    // '.'
 static ast_node_t* ast_new_literal_node(char);                            // 'a'
+static ast_node_t* ast_new_character_class_node(CharacterClassKind);      // '\d|\D|\w|\W|\s|\S'
 static ast_node_t* ast_new_class_bracketed_node();                        // '[a-z]'
 
 static class_set_item_t* class_bracketed_node_add_literal(ast_node_class_bracketed_t*, char);
@@ -244,7 +245,6 @@ void free_ast(ast_node_t* root) {
          free_ast(root->repitition->child);
          free(root->repitition);
          break;
-
       case NODE_KIND_LITERAL:
          free(root->literal);
          break;
@@ -327,6 +327,29 @@ static ast_node_t* factor(state_t* state) {
    } else if (peek(state) == '\\') {
       match(state, '\\');
       char value = next(state);
+      switch (value) {
+         case 'd':
+            temp = ast_new_character_class_node(CHARACTER_CLASS_KIND_DIGIT);
+            break;
+         case 'D':
+            temp = ast_new_character_class_node(CHARACTER_CLASS_KIND_NON_DIGIT);
+            break;
+         case 'w':
+            temp = ast_new_character_class_node(CHARACTER_CLASS_KIND_WORD);
+            break;
+         case 'W':
+            temp = ast_new_character_class_node(CHARACTER_CLASS_KIND_NON_WORD);
+            break;
+         case 's':
+            temp = ast_new_character_class_node(CHARACTER_CLASS_KIND_WHITESPACE);
+            break;
+         case 'S':
+            temp = ast_new_character_class_node(CHARACTER_CLASS_KIND_NON_WHITESPACE);
+            break;
+         default:
+            temp = ast_new_literal_node(value);
+            break;
+      }
       temp = ast_new_literal_node(value);
    } else if (is_special_character(peek(state)) == false) {
       char value = next(state);
