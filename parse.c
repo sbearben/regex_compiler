@@ -350,7 +350,6 @@ static ast_node_t* factor(state_t* state) {
             temp = ast_new_literal_node(value);
             break;
       }
-      temp = ast_new_literal_node(value);
    } else if (is_special_character(peek(state)) == false) {
       char value = next(state);
       temp = ast_new_literal_node(value);

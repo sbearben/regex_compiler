@@ -19,9 +19,11 @@ static nfa_t* new_optional_nfa(nfa_t*);            // 'a?'
 static nfa_t* new_literal_nfa(char);               // 'a'
 // Chracter classes
 static nfa_t* new_any_character_nfa();
-static nfa_t* new_character_class_nfa(CharacterClassKind);
 static nfa_t* new_class_bracketed_nfa(ast_node_class_bracketed_t*);
+static char* get_character_class_characters(CharacterClassKind);
 static nfa_t* nfa_from_character_set(char*);
+static char* get_characters_from_seen_map(char*, int, int);
+static void set_characters_into_seen_map(char*, char*);
 
 // Helpers for the NFA constructors
 static nfa_t* new_nfa();
@@ -84,6 +86,10 @@ nfa_t* nfa_from_ast(ast_node_t* root) {
       }
       case NODE_KIND_LITERAL: {
          nfa = new_literal_nfa(root->literal->value);
+         break;
+      }
+      case NODE_KIND_CHARACTER_CLASS: {
+         nfa = nfa_from_character_set(get_character_class_characters(root->character_class->kind));
          break;
       }
       case NODE_KIND_CLASS_BRACKETED: {
@@ -362,83 +368,72 @@ static nfa_t* new_any_character_nfa() {
    return nfa_from_character_set(any_characters);
 }
 
-static nfa_t* new_character_class_nfa(CharacterClassKind kind) {
-   static const char digit_characters[] = "0123456789";
-   static const char whitespace_characters[] = " \t\n\r\f\v";
-   static const char word_characters[] =
-       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
-
-   nfa_t* nfa = NULL;
-
-   switch (kind) {
-      case CHARACTER_CLASS_KIND_DIGIT:
-         nfa = nfa_from_character_set(digit_characters);
-         break;
-      case CHARACTER_CLASS_KIND_NON_DIGIT:
-         break;
-      case CHARACTER_CLASS_KIND_WHITESPACE:
-         nfa = nfa_from_character_set(whitespace_characters);
-         break;
-      case CHARACTER_CLASS_KIND_NON_WHITESPACE:
-         break;
-      case CHARACTER_CLASS_KIND_WORD:
-         nfa = nfa_from_character_set(word_characters);
-         break;
-      case CHARACTER_CLASS_KIND_NON_WORD:
-         break;
-      default:
-         error("[new_character_class_nfa] unexpected character class kind");
-   }
-
-   return nfa;
-}
-
 static nfa_t* new_class_bracketed_nfa(ast_node_class_bracketed_t* node) {
    static char seen_characters[ASCII_SIZE];
    memset(seen_characters, 0, sizeof seen_characters);
-   int max_character_count = 0;
 
    for (int i = 0; i < node->num_items; i++) {
       switch (node->items[i].kind) {
          case CLASS_SET_ITEM_KIND_LITERAL:
             seen_characters[(int)node->items[i].literal] = 1;
-            max_character_count++;
             break;
          case CLASS_SET_ITEM_KIND_RANGE:
             for (char ch = node->items[i].range.start; ch <= node->items[i].range.end; ch++) {
                seen_characters[(int)ch] = 1;
-               max_character_count++;
             }
             break;
       }
    }
 
-   if (node->negated == 1) {
-      max_character_count = 0;
-      for (int i = 0; i < ASCII_SIZE; i++) {
-         if (is_valid_character((char)i) == true) {
-            seen_characters[i] = seen_characters[i] == 0 ? 1 : 0;
-            if (seen_characters[i] == 1) {
-               max_character_count++;
-            }
+   return nfa_from_character_set(
+       get_characters_from_seen_map(seen_characters, ASCII_SIZE, node->negated));
+}
+
+static char* get_character_class_characters(CharacterClassKind kind) {
+   static char seen_characters[ASCII_SIZE];
+   static char digit_characters[] = "0123456789";
+   static char whitespace_characters[] = " \t\n\r\f\v";
+   static char word_characters[] =
+       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
+   static char non_digit_characters[ASCII_SIZE] = {0};
+   static char non_whitespace_characters[ASCII_SIZE] = {0};
+   static char non_word_characters[ASCII_SIZE] = {0};
+
+   switch (kind) {
+      case CHARACTER_CLASS_KIND_DIGIT:
+         return digit_characters;
+      case CHARACTER_CLASS_KIND_NON_DIGIT:
+         if (non_digit_characters[0] == 0) {
+            memset(seen_characters, 0, sizeof seen_characters);
+            set_characters_into_seen_map(seen_characters, digit_characters);
+            strcpy(non_digit_characters,
+                   get_characters_from_seen_map(seen_characters, ASCII_SIZE, 1));
          }
-      }
+         return non_digit_characters;
+      case CHARACTER_CLASS_KIND_WHITESPACE:
+         return whitespace_characters;
+      case CHARACTER_CLASS_KIND_NON_WHITESPACE:
+         if (non_whitespace_characters[0] == 0) {
+            memset(seen_characters, 0, sizeof seen_characters);
+            set_characters_into_seen_map(seen_characters, whitespace_characters);
+            strcpy(non_whitespace_characters,
+                   get_characters_from_seen_map(seen_characters, ASCII_SIZE, 1));
+         }
+         return non_whitespace_characters;
+      case CHARACTER_CLASS_KIND_WORD:
+         return word_characters;
+      case CHARACTER_CLASS_KIND_NON_WORD:
+         if (non_word_characters[0] == 0) {
+            memset(seen_characters, 0, sizeof seen_characters);
+            set_characters_into_seen_map(seen_characters, word_characters);
+            strcpy(non_word_characters,
+                   get_characters_from_seen_map(seen_characters, ASCII_SIZE, 1));
+         }
+         return non_word_characters;
+      default:
+         error("[get_character_class_characters] unexpected character class kind");
    }
-
-   // Create nfa from seen characters
-   char* characters = (char*)xmalloc((MIN(max_character_count, ASCII_SIZE) + 1) * sizeof(char));
-   int ch_index = 0;
-   for (int i = 0; i < ASCII_SIZE; i++) {
-      if (seen_characters[i] == 1) {
-         characters[ch_index++] = i;
-      }
-   }
-   characters[ch_index] = '\0';
-
-   nfa_t* temp = nfa_from_character_set(characters);
-   free(characters);
-
-   return temp;
+   return NULL;
 }
 
 static nfa_t* nfa_from_character_set(char* characters) {
@@ -453,6 +448,31 @@ static nfa_t* nfa_from_character_set(char* characters) {
       nfa->start->edges[i].to = nfa->end;
    }
    return nfa;
+}
+
+static char* get_characters_from_seen_map(char* seen_map, int map_size, int negated) {
+   static char characters[ASCII_SIZE];
+   memset(characters, 0, sizeof characters);
+
+   int index_offset = 0;
+   for (int i = 0; i < map_size; i++) {
+      if (negated == 1) {
+         if (seen_map[i] == 0 && is_valid_character(i) == true) {
+            characters[index_offset++] = i;
+         }
+      } else if (seen_map[i] == 1) {
+         characters[index_offset++] = i;
+      }
+   }
+   characters[index_offset] = '\0';
+
+   return characters;
+}
+
+void set_characters_into_seen_map(char* seen_map, char* characters) {
+   for (int i = 0; i < strlen(characters); i++) {
+      seen_map[(int)characters[i]] = 1;
+   }
 }
 
 /**

@@ -106,7 +106,7 @@ struct class_set_item {
       union {
             char literal;
             class_set_range_t range;
-      };
+            };
 };
 
 /**
