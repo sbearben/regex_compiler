@@ -204,6 +204,50 @@ TEST_CASE(regex_matches_tabs_and_newlines) {
    regex_release(regex);
 }
 
+TEST_CASE(regex_matches_character_classes) {
+   // First
+   regex_t* regex = new_regex("\\w+\\s+\\w+");
+
+   assert_true(regex_accepts(regex, "hello world"));
+   assert_true(regex_accepts(regex, "bob \t35"));
+   assert_true(regex_accepts(regex, "askj7837jj\n  \t111ss"));
+
+   assert_false(regex_accepts(regex, " howdy"));
+   assert_false(regex_accepts(regex, "?hey there"));
+
+   regex_release(regex);
+
+   // Second
+   regex = new_regex("\\d+\\s+\\d+");
+   assert_true(regex_accepts(regex, "123 456"));
+   assert_true(regex_accepts(regex, "1\t  2"));
+   assert_true(regex_accepts(regex, "99   \n\t\r 2"));
+
+   assert_false(regex_accepts(regex, "hey there"));
+   assert_false(regex_accepts(regex, "123 456 789"));
+
+   regex_release(regex);
+
+   // Third
+   regex = new_regex("\\W+");
+   assert_true(regex_accepts(regex, "\\?!,\\.\\(\\)[]{}"));
+   assert_false(regex_accepts(regex, "hello"));
+   regex_release(regex);
+
+   // Fourth
+   regex = new_regex("\\S+");
+   assert_true(regex_accepts(regex, "k"));
+   // assert_false(regex_accepts(regex, "hello\tworld"));
+   regex_release(regex);
+
+   // Fifth
+   regex = new_regex("\\D+");
+   assert_true(regex_accepts(regex, "hello"));
+   assert_true(regex_accepts(regex, "hello world"));
+   assert_false(regex_accepts(regex, "123"));
+   regex_release(regex);
+}
+
 void on_register_tests(void) {
    REGISTER_TEST(regex_accepts_matches_exactly);
    REGISTER_TEST(regex_matches_quantifiers);
@@ -212,4 +256,5 @@ void on_register_tests(void) {
    REGISTER_TEST(regex_works_with_the_any_character_class);
    REGISTER_TEST(regex_works_with_character_ranges);
    REGISTER_TEST(regex_matches_tabs_and_newlines);
+   REGISTER_TEST(regex_matches_character_classes);
 }

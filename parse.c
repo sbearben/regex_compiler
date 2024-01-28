@@ -57,6 +57,7 @@ static ast_node_t* ast_new_concat_node(ast_node_t*, ast_node_t*);         // 'ab
 static ast_node_t* ast_new_repetition_node(RepetitionKind, ast_node_t*);  // 'a*|a+|a?'
 static ast_node_t* ast_new_dot_node();                                    // '.'
 static ast_node_t* ast_new_literal_node(char);                            // 'a'
+static ast_node_t* ast_new_character_class_node(CharacterClassKind);      // '\d|\D|\w|\W|\s|\S'
 static ast_node_t* ast_new_class_bracketed_node();                        // '[a-z]'
 
 static class_set_item_t* class_bracketed_node_add_literal(ast_node_class_bracketed_t*, char);
@@ -244,12 +245,15 @@ void free_ast(ast_node_t* root) {
          free_ast(root->repitition->child);
          free(root->repitition);
          break;
+      case NODE_KIND_LITERAL:
+         free(root->literal);
+         break;
+      case NODE_KIND_CHARACTER_CLASS:
+         free(root->character_class);
+         break;
       case NODE_KIND_CLASS_BRACKETED:
          free(root->class_bracketed->items);
          free(root->class_bracketed);
-         break;
-      case NODE_KIND_LITERAL:
-         free(root->literal);
          break;
       default:
          break;
@@ -323,7 +327,29 @@ static ast_node_t* factor(state_t* state) {
    } else if (peek(state) == '\\') {
       match(state, '\\');
       char value = next(state);
-      temp = ast_new_literal_node(value);
+      switch (value) {
+         case 'd':
+            temp = ast_new_character_class_node(CHARACTER_CLASS_KIND_DIGIT);
+            break;
+         case 'D':
+            temp = ast_new_character_class_node(CHARACTER_CLASS_KIND_NON_DIGIT);
+            break;
+         case 'w':
+            temp = ast_new_character_class_node(CHARACTER_CLASS_KIND_WORD);
+            break;
+         case 'W':
+            temp = ast_new_character_class_node(CHARACTER_CLASS_KIND_NON_WORD);
+            break;
+         case 's':
+            temp = ast_new_character_class_node(CHARACTER_CLASS_KIND_WHITESPACE);
+            break;
+         case 'S':
+            temp = ast_new_character_class_node(CHARACTER_CLASS_KIND_NON_WHITESPACE);
+            break;
+         default:
+            temp = ast_new_literal_node(value);
+            break;
+      }
    } else if (is_special_character(peek(state)) == false) {
       char value = next(state);
       temp = ast_new_literal_node(value);
@@ -405,6 +431,14 @@ static ast_node_t* ast_new_literal_node(char value) {
    node->kind = NODE_KIND_LITERAL;
    node->literal = xmalloc(sizeof(ast_node_literal_t));
    node->literal->value = value;
+   return node;
+}
+
+static ast_node_t* ast_new_character_class_node(CharacterClassKind kind) {
+   ast_node_t* node = xmalloc(sizeof(ast_node_t));
+   node->kind = NODE_KIND_CHARACTER_CLASS;
+   node->character_class = xmalloc(sizeof(ast_character_class_t));
+   node->character_class->kind = kind;
    return node;
 }
 

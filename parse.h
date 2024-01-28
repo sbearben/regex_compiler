@@ -12,6 +12,7 @@ typedef struct ast_node_concat ast_node_concat_t;
 typedef struct ast_node_repitition ast_node_repitition_t;
 typedef struct ast_node_dot ast_node_dot_t;
 typedef struct ast_node_literal ast_node_literal_t;
+typedef struct ast_character_class ast_character_class_t;
 typedef struct ast_node_class_bracketed ast_node_class_bracketed_t;
 
 typedef struct class_set_item class_set_item_t;
@@ -23,6 +24,7 @@ typedef enum {
    NODE_KIND_REPITITION,
    NODE_KIND_DOT,
    NODE_KIND_LITERAL,
+   NODE_KIND_CHARACTER_CLASS,
    NODE_KIND_CLASS_BRACKETED,
 } NodeKind;
 
@@ -31,6 +33,15 @@ typedef enum {
    REPITITION_KIND_ZERO_OR_MORE,
    REPITITION_KIND_ONE_OR_MORE,
 } RepetitionKind;
+
+typedef enum {
+   CHARACTER_CLASS_KIND_DIGIT,
+   CHARACTER_CLASS_KIND_NON_DIGIT,
+   CHARACTER_CLASS_KIND_WORD,
+   CHARACTER_CLASS_KIND_NON_WORD,
+   CHARACTER_CLASS_KIND_WHITESPACE,
+   CHARACTER_CLASS_KIND_NON_WHITESPACE,
+} CharacterClassKind;
 
 typedef enum {
    CLASS_SET_ITEM_KIND_LITERAL,
@@ -45,6 +56,7 @@ struct ast_node {
             ast_node_repitition_t* repitition;
             ast_node_dot_t* dot;
             ast_node_literal_t* literal;
+            ast_character_class_t* character_class;
             ast_node_class_bracketed_t* class_bracketed;
       };
 };
@@ -73,6 +85,10 @@ struct ast_node_literal {
       char value;
 };
 
+struct ast_character_class {
+      CharacterClassKind kind;
+};
+
 struct ast_node_class_bracketed {
       int negated;
       int num_items;       // number of items in the set
@@ -90,7 +106,7 @@ struct class_set_item {
       union {
             char literal;
             class_set_range_t range;
-      };
+            };
 };
 
 /**
