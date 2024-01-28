@@ -28,6 +28,7 @@ struct test_case {
       const char* name;
       test_func_t func;
       const char* filename;
+      bool has_failures;
       list_t* test_results;  // list of test_result_t
 };
 
@@ -62,6 +63,7 @@ void __assert(bool condition, const char* condition_str, const char* file, const
               int line) {
    if (!condition) {
       runner->has_failures = true;
+      runner->current_test_case->has_failures = true;
 
       test_result_t* test_result = malloc(sizeof(test_result_t));
       test_result->condition_str = condition_str;
@@ -128,6 +130,10 @@ static void test_run_all(test_runner_t* runner) {
       printf("\nTest failures:\n");
       list_traverse(runner->test_cases, current_test_case) {
          test_case_t* test_case = (test_case_t*)current_test_case->data;
+         if (!test_case->has_failures) {
+            continue;
+         }
+
          printf("\n%s (file: %s)\n", test_case->name, test_case->filename);
 
          list_node_t* current_result;

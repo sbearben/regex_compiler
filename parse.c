@@ -220,7 +220,7 @@ ast_node_t* parse_regex(char* pattern) {
    ast_node_t* result = regexp(&state);
 
    if (peek(&state) != '\0') {
-      error("Expected end of input (\'\\0\')");
+      error("Expected end of input ('\\0')");
    }
 
    return result;
