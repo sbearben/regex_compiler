@@ -110,7 +110,7 @@ char* nfa_language(nfa_t* nfa) {
    static char seen_characters[128];
    memset(seen_characters, 0, sizeof seen_characters);
 
-   nfa->__language = (char*)malloc(128);
+   nfa->__language = malloc(sizeof(char) * 128);
    int lang_index = 0;
    char edge_value = '\0';
 
@@ -480,12 +480,12 @@ void set_characters_into_seen_map(char* seen_map, char* characters) {
 */
 
 static nfa_t* new_nfa() {
-   nfa_t* nfa = (nfa_t*)xmalloc(sizeof(nfa_t));
+   nfa_t* nfa = xmalloc(sizeof(nfa_t));
    nfa->start = NULL;
    nfa->end = NULL;
    nfa->__language = NULL;
 
-   nfa->__nodes = (list_t*)malloc(sizeof(list_t));
+   nfa->__nodes = xmalloc(sizeof(list_t));
    list_initialize(nfa->__nodes, free_nfa_list_node);
 
    return nfa;
@@ -513,7 +513,7 @@ static nfa_node_t* nfa_new_node(nfa_t* nfa, int num_edges) {
 
 // Alloc a node and its edges -> edges are empty and need to be initialized
 static nfa_node_t* new_node(int num_edges) {
-   nfa_node_t* node = (nfa_node_t*)xmalloc(sizeof(nfa_node_t));
+   nfa_node_t* node = xmalloc(sizeof(nfa_node_t));
    node->id = node_id++;
    node->is_accepting = false;
 
@@ -530,7 +530,7 @@ static nfa_node_t* new_node(int num_edges) {
 }
 
 static nfa_edge_t* new_edges(int num) {
-   nfa_edge_t* edges = (nfa_edge_t*)xmalloc(num * sizeof(nfa_edge_t));
+   nfa_edge_t* edges = xmalloc(num * sizeof(nfa_edge_t));
    for (int i = 0; i < num; i++) {
       edges[i].to = NULL;
    }
@@ -553,7 +553,7 @@ static void init_epsilon(nfa_edge_t* edge) {
 }
 
 static void nfa_traverse(nfa_t* nfa, on_node_f on_node) {
-   list_t* seen_nodes = (list_t*)malloc(sizeof(list_t));
+   list_t* seen_nodes = xmalloc(sizeof(list_t));
    list_initialize(seen_nodes, list_noop_data_destructor);
 
    nodes_traverse(nfa->start, on_node, seen_nodes);

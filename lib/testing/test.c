@@ -46,13 +46,13 @@ static void test_runner_release(test_runner_t*);
 static void test_case_release(void*);
 
 void __register_test(const char* name, test_func_t func, const char* filename) {
-   test_case_t* test_case = (test_case_t*)malloc(sizeof(test_case_t));
+   test_case_t* test_case = malloc(sizeof(test_case_t));
    test_case->name = name;
    test_case->func = func;
    test_case->filename = filename;
 
    // Test results
-   test_case->test_results = (list_t*)malloc(sizeof(list_t));
+   test_case->test_results = malloc(sizeof(list_t));
    list_initialize(test_case->test_results, NULL);
 
    list_push(runner->test_cases, test_case);
@@ -63,7 +63,7 @@ void __assert(bool condition, const char* condition_str, const char* file, const
    if (!condition) {
       runner->has_failures = true;
 
-      test_result_t* test_result = (test_result_t*)malloc(sizeof(test_result_t));
+      test_result_t* test_result = malloc(sizeof(test_result_t));
       test_result->condition_str = condition_str;
       test_result->lineno = line;
       test_result->passed = false;
@@ -73,8 +73,8 @@ void __assert(bool condition, const char* condition_str, const char* file, const
 }
 
 static test_runner_t* test_runner_new(const char* test_name) {
-   test_runner_t* test_runner = (test_runner_t*)malloc(sizeof(test_runner_t));
-   test_runner->test_cases = (list_t*)malloc(sizeof(list_t));
+   test_runner_t* test_runner = malloc(sizeof(test_runner_t));
+   test_runner->test_cases = malloc(sizeof(list_t));
    list_initialize(test_runner->test_cases, test_case_release);
    test_runner->current_test_case = NULL;
    test_runner->has_failures = false;

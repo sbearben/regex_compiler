@@ -74,16 +74,16 @@ bool dfa_accepts(dfa_t* dfa, char* str, int len) {
 
 dfa_t* dfa_from_nfa(nfa_t* nfa) {
    // Create dfa
-   dfa_t* dfa = (dfa_t*)xmalloc(sizeof(dfa_t));
+   dfa_t* dfa = xmalloc(sizeof(dfa_t));
    dfa->start = NULL;
-   dfa->__nodes = (list_t*)malloc(sizeof(list_t));
+   dfa->__nodes = malloc(sizeof(list_t));
    list_initialize(dfa->__nodes, free_dfa_list_node);
 
    // Create initial eclosure from starting node of nfa, then create dfa_node from the eclosure
    epsilon_closure_t* initial_closure = compute_epsilon_closure(nfa->start);
 
    // Create a stack of eclosures to process - this stack is empty by end of while loop
-   list_t* eclosures_stack = (list_t*)malloc(sizeof(list_t));
+   list_t* eclosures_stack = malloc(sizeof(list_t));
    list_initialize(eclosures_stack, NULL);
    list_push(eclosures_stack, initial_closure);
 
@@ -147,10 +147,10 @@ void log_dfa(dfa_t* dfa) {
 }
 
 static epsilon_closure_t* new_epsilon_closure() {
-   epsilon_closure_t* epsilon_closure = (epsilon_closure_t*)xmalloc(sizeof(epsilon_closure_t));
+   epsilon_closure_t* epsilon_closure = xmalloc(sizeof(epsilon_closure_t));
    epsilon_closure->id = NULL;
 
-   epsilon_closure->nodes = (list_t*)malloc(sizeof(list_t));
+   epsilon_closure->nodes = xmalloc(sizeof(list_t));
    list_initialize(epsilon_closure->nodes, list_noop_data_destructor);
 
    return epsilon_closure;
@@ -158,7 +158,7 @@ static epsilon_closure_t* new_epsilon_closure() {
 
 static epsilon_closure_t* compute_epsilon_closure(nfa_node_t* nfa_node) {
    epsilon_closure_t* epsilon_closure = new_epsilon_closure();
-   epsilon_closure->id = (char*)xmalloc(sizeof(char) * num_places(nfa_node->id) + 1);
+   epsilon_closure->id = xmalloc(sizeof(char) * num_places(nfa_node->id) + 1);
    sprintf(epsilon_closure->id, "%d", nfa_node->id);
 
    __compute_epsilon_closure(nfa_node, epsilon_closure);
@@ -169,7 +169,7 @@ static epsilon_closure_t* compute_epsilon_closure(nfa_node_t* nfa_node) {
 static epsilon_closure_t* compute_epsilon_closure_for_set(list_t* nfa_nodes, char* id) {
    // Implementation would be a lot nicer with a proper set data structure
    epsilon_closure_t* set_eclosure = new_epsilon_closure();
-   set_eclosure->id = (char*)xmalloc(sizeof(char) * strlen(id) + 1);
+   set_eclosure->id = xmalloc(sizeof(char) * strlen(id) + 1);
    strcpy(set_eclosure->id, id);
 
    list_node_t* current_nfa;
@@ -204,11 +204,11 @@ static void __compute_epsilon_closure(nfa_node_t* nfa_node, epsilon_closure_t* e
 
 dfa_node_t* dfa_node_from_epsilon_closure(epsilon_closure_t* epsilon_closure) {
    // Create dfa_node
-   dfa_node_t* dfa_node = (dfa_node_t*)xmalloc(sizeof(dfa_node_t));
-   dfa_node->id = (char*)xmalloc(sizeof(char) * strlen(epsilon_closure->id) + 1);
+   dfa_node_t* dfa_node = xmalloc(sizeof(dfa_node_t));
+   dfa_node->id = xmalloc(sizeof(char) * strlen(epsilon_closure->id) + 1);
    strcpy(dfa_node->id, epsilon_closure->id);
    dfa_node->is_accepting = false;
-   dfa_node->edges = (list_t*)malloc(sizeof(list_t));
+   dfa_node->edges = malloc(sizeof(list_t));
    list_initialize(dfa_node->edges, NULL);
 
    // Determine if dfa_node is accepting
@@ -228,7 +228,7 @@ static dfa_node_t* dfa_find_node(dfa_t* dfa, char* id) {
 }
 
 static void dfa_node_add_edge(dfa_node_t* dfa_node, char symbol, dfa_node_t* to) {
-   dfa_edge_t* edge = (dfa_edge_t*)xmalloc(sizeof(dfa_edge_t));
+   dfa_edge_t* edge = xmalloc(sizeof(dfa_edge_t));
    edge->value = symbol;
    edge->to = to;
 
@@ -246,7 +246,7 @@ static char* create_id_for_set(list_t* nfa_nodes) {
    }
 
    // Don't need +1 for null terminator since length calculation always adds 1 extra
-   char* id = (char*)malloc(sizeof(char) * id_length);
+   char* id = xmalloc(sizeof(char) * id_length);
    id[0] = '\0';
 
    // Create id
@@ -262,7 +262,7 @@ static char* create_id_for_set(list_t* nfa_nodes) {
 }
 
 static list_t* compute_move_set(list_t* nfa_nodes, char symbol) {
-   list_t* nfa_nodes_with_transition = (list_t*)malloc(sizeof(list_t));
+   list_t* nfa_nodes_with_transition = xmalloc(sizeof(list_t));
    list_initialize(nfa_nodes_with_transition, list_noop_data_destructor);
 
    list_node_t* current;

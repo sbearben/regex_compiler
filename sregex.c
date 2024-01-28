@@ -19,8 +19,8 @@ struct regex {
 static dfa_t* regex_parse(char*);
 
 regex_t* new_regex(char* pattern) {
-   regex_t* regex = (regex_t*)xmalloc(sizeof(regex_t));
-   regex->pattern = (char*)xmalloc(strlen(pattern) + 1);
+   regex_t* regex = xmalloc(sizeof(regex_t));
+   regex->pattern = xmalloc(sizeof(char) * (strlen(pattern) + 1));
    strcpy(regex->pattern, pattern);
    regex->dfa = regex_parse(pattern);
 
