@@ -382,6 +382,10 @@ static nfa_t* new_class_bracketed_nfa(ast_node_class_bracketed_t* node) {
                seen_characters[(int)ch] = 1;
             }
             break;
+         case CLASS_SET_ITEM_KIND_CHARACTER_CLASS:
+            set_characters_into_seen_map(seen_characters, get_character_class_characters(
+                                                              node->items[i].character_class.kind));
+            break;
       }
    }
 

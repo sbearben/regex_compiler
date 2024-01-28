@@ -35,17 +35,18 @@ typedef enum {
 } RepetitionKind;
 
 typedef enum {
-   CHARACTER_CLASS_KIND_DIGIT,
-   CHARACTER_CLASS_KIND_NON_DIGIT,
-   CHARACTER_CLASS_KIND_WORD,
-   CHARACTER_CLASS_KIND_NON_WORD,
-   CHARACTER_CLASS_KIND_WHITESPACE,
-   CHARACTER_CLASS_KIND_NON_WHITESPACE,
+   CHARACTER_CLASS_KIND_DIGIT = 1,
+   CHARACTER_CLASS_KIND_NON_DIGIT = 2,
+   CHARACTER_CLASS_KIND_WORD = 3,
+   CHARACTER_CLASS_KIND_NON_WORD = 4,
+   CHARACTER_CLASS_KIND_WHITESPACE = 5,
+   CHARACTER_CLASS_KIND_NON_WHITESPACE = 6,
 } CharacterClassKind;
 
 typedef enum {
    CLASS_SET_ITEM_KIND_LITERAL,
    CLASS_SET_ITEM_KIND_RANGE,
+   CLASS_SET_ITEM_KIND_CHARACTER_CLASS,
 } ClassSetItemKind;
 
 struct ast_node {
@@ -106,7 +107,8 @@ struct class_set_item {
       union {
             char literal;
             class_set_range_t range;
-            };
+            ast_character_class_t character_class;
+      };
 };
 
 /**

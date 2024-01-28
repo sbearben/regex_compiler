@@ -193,6 +193,16 @@ TEST_CASE(regex_works_with_character_ranges) {
    assert_false(regex_accepts(regex, "zbba"));
 
    regex_release(regex);
+
+   // Fourth
+   regex = new_regex("[\\d-\\w]+");
+
+   assert_true(regex_accepts(regex, "hello2233-"));
+   assert_true(regex_accepts(regex, "-99kjakAA--"));
+
+   assert_false(regex_accepts(regex, "hello world"));
+
+   regex_release(regex);
 }
 
 TEST_CASE(regex_matches_tabs_and_newlines) {
