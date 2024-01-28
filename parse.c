@@ -25,11 +25,6 @@
 
 #include "utils.h"
 
-/**
- * Improvement ideas:
- * - Add support for character classes
- */
-
 typedef struct state {
       const char* pattern;
       char* current;
