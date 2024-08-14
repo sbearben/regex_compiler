@@ -7,7 +7,7 @@ pub struct Regex {
 }
 
 impl Regex {
-    pub fn new(pattern: &str) -> Regex {
+    pub fn new(pattern: &str) -> Self {
         let ast = Parser::parse(pattern).unwrap();
         let nfa = NFA::from_ast(&ast);
         let dfa = DFA::from_nfa(&nfa);

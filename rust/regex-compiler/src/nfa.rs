@@ -16,7 +16,6 @@ struct Builder {
 
 #[derive(Clone, Debug)]
 pub struct NFANode {
-    id: usize,
     pub is_accepting: bool,
     edges: Vec<NFAEdge>,
 }
@@ -230,7 +229,7 @@ impl Builder {
     // Creates node and attaches it to vector
     fn add_node(&mut self) -> NFANodeIdx {
         let id = self.nodes.len();
-        self.nodes.push(NFANode::new(id));
+        self.nodes.push(NFANode::new());
         NFANodeIdx(id)
     }
 
@@ -246,9 +245,8 @@ impl Builder {
 }
 
 impl NFANode {
-    pub fn new(id: usize) -> Self {
+    pub fn new() -> Self {
         NFANode {
-            id,
             is_accepting: false,
             edges: vec![],
         }
