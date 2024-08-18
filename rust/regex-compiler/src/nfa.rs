@@ -56,6 +56,10 @@ impl NFA {
                 .or_insert_with(|| self.compute_move_set(&current, c))
                 .clone();
 
+            if (move_set).is_empty() {
+                return false;
+            }
+
             current = closure_cache
                 .entry(EpsilonClosure::id_for_set(&move_set))
                 .or_insert_with(|| self.epsilon_closure_set(move_set))
