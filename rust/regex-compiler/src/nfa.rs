@@ -1,17 +1,18 @@
 use crate::alphabet::Alphabet;
 use crate::ast::{AstNode, AstNodeLayer, AstTopo, ComputeCharacters, RepetitionKind};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+
+struct Builder {
+    nodes: Vec<NFANode>,
+    character_set: HashSet<char>,
+    start: Option<NFANodeIdx>,
+}
 
 #[derive(Debug)]
 pub struct NFA {
     nodes: Vec<NFANode>,
     start: NFANodeIdx,
     character_set: HashSet<char>,
-}
-struct Builder {
-    nodes: Vec<NFANode>,
-    character_set: HashSet<char>,
-    start: Option<NFANodeIdx>,
 }
 
 #[derive(Clone, Debug)]
@@ -29,7 +30,7 @@ pub enum NFAEdge {
 #[derive(Clone, PartialEq, Eq, Hash, Copy, Debug)]
 pub struct NFANodeIdx(usize);
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct EpsilonClosure {
     pub id: String,
     pub is_accepting: bool,
@@ -40,6 +41,28 @@ impl NFA {
     pub fn from_ast(root: &AstNode) -> Self {
         let mut builder = Builder::new();
         builder.from_ast(root).build()
+    }
+
+    pub fn accepts(&self, input: &str) -> bool {
+        let mut move_set_cache = HashMap::new();
+        let mut closure_cache = HashMap::new();
+
+        let mut current = self.epsilon_closure(self.start);
+        closure_cache.insert(current.id.clone(), current.clone());
+
+        for c in input.chars() {
+            let move_set = move_set_cache
+                .entry((current.id.clone(), c))
+                .or_insert_with(|| self.compute_move_set(&current, c))
+                .clone();
+
+            current = closure_cache
+                .entry(EpsilonClosure::id_for_set(&move_set))
+                .or_insert_with(|| self.epsilon_closure_set(move_set))
+                .clone();
+        }
+
+        current.is_accepting
     }
 
     pub fn start(&self) -> NFANodeIdx {
@@ -205,8 +228,8 @@ impl Builder {
 
         // Mark the last node as accepting (zero index since we reversed the elements)
         let (start, end) = results_map[0];
-        self.nodes.get_mut(end.0).unwrap().is_accepting = true;
         self.start = Some(start);
+        self.nodes.get_mut(end.0).unwrap().is_accepting = true;
 
         self
     }

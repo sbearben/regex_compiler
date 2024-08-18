@@ -3,7 +3,23 @@ use crate::nfa::NFA;
 use crate::parse::Parser;
 
 pub struct Regex {
-    dfa: DFA,
+    matcher: Box<dyn Matcher>,
+}
+
+trait Matcher {
+    fn accepts(&self, input: &str) -> bool;
+}
+
+impl Matcher for DFA {
+    fn accepts(&self, input: &str) -> bool {
+        self.accepts(input)
+    }
+}
+
+impl Matcher for NFA {
+    fn accepts(&self, input: &str) -> bool {
+        self.accepts(input)
+    }
 }
 
 impl Regex {
@@ -12,11 +28,22 @@ impl Regex {
         let nfa = NFA::from_ast(&ast);
         let dfa = DFA::from_nfa(&nfa);
 
-        Regex { dfa }
+        Regex {
+            matcher: Box::new(dfa),
+        }
+    }
+
+    pub fn new_nfa_sim(pattern: &str) -> Self {
+        let ast = Parser::parse(pattern).unwrap();
+        let nfa = NFA::from_ast(&ast);
+
+        Regex {
+            matcher: Box::new(nfa),
+        }
     }
 
     pub fn accepts(&self, input: &str) -> bool {
-        self.dfa.accepts(input)
+        self.matcher.accepts(input)
     }
 
     // Returns true if the provided string contains any substring that matches the regex.
