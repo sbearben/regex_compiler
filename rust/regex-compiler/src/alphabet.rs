@@ -99,7 +99,7 @@ impl Alphabet {
     }
 }
 // (is_special, is_quantifier)
-const ALPHABET_CONFIG_ENTRIES: &'static [(char, [u8; 2])] = &[
+const ALPHABET_CONFIG_ENTRIES: &[(char, [u8; 2])] = &[
     ('\t', [0, 0]),
     ('\n', [0, 0]),
     ('\r', [0, 0]),
@@ -200,11 +200,11 @@ const ALPHABET_CONFIG_ENTRIES: &'static [(char, [u8; 2])] = &[
     ('~', [0, 0]),
 ];
 
-const WHITESPACE_CHARACTERS: &'static [char] = &[' ', '\t', '\n', '\r'];
+const WHITESPACE_CHARACTERS: &[char] = &[' ', '\t', '\n', '\r'];
 
-const DIGIT_CHARACTERS: &'static [char] = &['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+const DIGIT_CHARACTERS: &[char] = &['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
-const WORD_CHARACTERS: &'static [char] = &[
+const WORD_CHARACTERS: &[char] = &[
     'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's',
     't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L',
     'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '0', '1', '2', '3', '4',

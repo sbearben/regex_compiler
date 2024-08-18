@@ -73,10 +73,6 @@ impl NFA {
         self.start
     }
 
-    pub fn node(&self, idx: NFANodeIdx) -> &NFANode {
-        &self.nodes[idx.0]
-    }
-
     pub fn character_set_iter(&self) -> impl Iterator<Item = &char> {
         self.character_set.iter()
     }
@@ -120,6 +116,10 @@ impl NFA {
         }
 
         move_set
+    }
+
+    fn node(&self, idx: NFANodeIdx) -> &NFANode {
+        &self.nodes[idx.0]
     }
 }
 

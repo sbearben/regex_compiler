@@ -39,7 +39,7 @@ impl Parser {
 
     fn parse_regexp(&self) -> Result<AstNode> {
         let mut temp = self.parse_concatenation()?;
-        while let Some(_) = self.match_char('|') {
+        while self.match_char('|').is_some() {
             temp = AstNode::alternation(ast::Alternation::new(temp, self.parse_concatenation()?));
         }
         Ok(temp)
@@ -139,11 +139,11 @@ impl Parser {
     }
 
     pub fn in_factor_first_set(&self, value: &char) -> bool {
-        return !self.alphabet.is_special_character(value)
+        !self.alphabet.is_special_character(value)
             || *value == '('
             || *value == '\\'
             || *value == '.'
-            || *value == '[';
+            || *value == '['
     }
 
     fn peek(&self) -> Option<char> {
